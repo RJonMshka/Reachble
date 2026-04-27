@@ -40,7 +40,7 @@ export function parseNpmLock(content: string): ResolvedPackage[] {
   if (maybeV1['lockfileVersion'] === 1) {
     throw new LockfileParseError(
       'package-lock.json',
-      'lockfileVersion 1 (npm 5/6) is not supported — re-run `npm install` with npm 7+ to upgrade'
+      'lockfileVersion 1 (npm 5/6) is not supported — re-run `npm install` with npm 7+ to upgrade',
     )
   }
 
@@ -64,9 +64,14 @@ export function parseNpmLock(content: string): ResolvedPackage[] {
   // Root package adds '.' as depender for its direct deps
   const root = packages['']
   if (root !== undefined) {
-    for (const name of Object.keys({ ...root.dependencies, ...root.devDependencies, ...root.optionalDependencies })) {
-      if (!depMap.has(name)) depMap.set(name, new Set())
-      depMap.get(name)!.add('.')
+    for (const name of Object.keys({
+      ...root.dependencies,
+      ...root.devDependencies,
+      ...root.optionalDependencies,
+    })) {
+      const rootDepSet = depMap.get(name) ?? new Set<string>()
+      rootDepSet.add('.')
+      depMap.set(name, rootDepSet)
     }
   }
 
@@ -75,8 +80,9 @@ export function parseNpmLock(content: string): ResolvedPackage[] {
     if (key === '' || entry.link === true || entry.version === undefined) continue
     const name = nameFromKey(key)
     for (const depName of Object.keys({ ...entry.dependencies, ...entry.optionalDependencies })) {
-      if (!depMap.has(depName)) depMap.set(depName, new Set())
-      depMap.get(depName)!.add(name)
+      const pkgDepSet = depMap.get(depName) ?? new Set<string>()
+      pkgDepSet.add(name)
+      depMap.set(depName, pkgDepSet)
     }
   }
 

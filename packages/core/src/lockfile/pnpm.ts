@@ -33,8 +33,9 @@ function buildAdjMap(packages: Record<string, { deps: Record<string, string> }>)
     const name = nameFromNv(nv)
     for (const [depName, depVersion] of Object.entries(deps)) {
       const depNv = `${depName}@${depVersion}`
-      if (!m.has(depNv)) m.set(depNv, new Set())
-      m.get(depNv)!.add(name)
+      const adjSet = m.get(depNv) ?? new Set<string>()
+      adjSet.add(name)
+      m.set(depNv, adjSet)
     }
   }
   return m
@@ -42,7 +43,7 @@ function buildAdjMap(packages: Record<string, { deps: Record<string, string> }>)
 
 function bfsDepths(
   rootNvs: string[],
-  packages: Record<string, { deps: Record<string, string> }>
+  packages: Record<string, { deps: Record<string, string> }>,
 ): Map<string, number> {
   const dist = new Map<string, number>()
   const queue: Array<{ nv: string; depth: number }> = []
@@ -53,7 +54,9 @@ function bfsDepths(
     }
   }
   while (queue.length > 0) {
-    const { nv, depth } = queue.shift()!
+    const item = queue.shift()
+    if (item === undefined) break
+    const { nv, depth } = item
     const pkg = packages[nv]
     if (pkg === undefined) continue
     for (const [depName, depVersion] of Object.entries(pkg.deps)) {
@@ -69,13 +72,14 @@ function bfsDepths(
 
 function bfsReachable(
   rootNvs: string[],
-  packages: Record<string, { deps: Record<string, string> }>
+  packages: Record<string, { deps: Record<string, string> }>,
 ): Set<string> {
   const visited = new Set<string>()
   const queue: string[] = [...rootNvs]
   for (const nv of rootNvs) visited.add(nv)
   while (queue.length > 0) {
-    const nv = queue.shift()!
+    const nv = queue.shift()
+    if (nv === undefined) break
     const pkg = packages[nv]
     if (pkg === undefined) continue
     for (const [depName, depVersion] of Object.entries(pkg.deps)) {
@@ -96,7 +100,9 @@ export function parsePnpmLock(content: string): ResolvedPackage[] {
   try {
     raw = yamlLoad(content)
   } catch (err) {
-    throw new LockfileParseError('pnpm-lock.yaml', `YAML parse failed: ${String(err)}`, { cause: err })
+    throw new LockfileParseError('pnpm-lock.yaml', `YAML parse failed: ${String(err)}`, {
+      cause: err,
+    })
   }
 
   const parsed = PnpmLockfileSchema.safeParse(raw)
@@ -133,8 +139,10 @@ export function parsePnpmLock(content: string): ResolvedPackage[] {
   let devReachable: Set<string>
   if (hasExplicitDevFlags) {
     // Use the explicit flags — no BFS needed
-    prodReachable = new Set(Object.keys(packages).filter((nv) => packages[nv]!.devExplicit !== true))
-    devReachable = new Set(Object.keys(packages).filter((nv) => packages[nv]!.devExplicit === true))
+    prodReachable = new Set(
+      Object.keys(packages).filter((nv) => packages[nv]?.devExplicit !== true),
+    )
+    devReachable = new Set(Object.keys(packages).filter((nv) => packages[nv]?.devExplicit === true))
   } else {
     prodReachable = bfsReachable(prodRootNvs, packages)
     devReachable = bfsReachable(devRootNvs, packages)
@@ -151,12 +159,12 @@ export function parsePnpmLock(content: string): ResolvedPackage[] {
 
     const dependents = new Set<string>()
     if (prodRootNames.includes(name) || devRootNames.includes(name)) dependents.add('.')
-    for (const dependerName of (adjMap.get(nv) ?? [])) {
+    for (const dependerName of adjMap.get(nv) ?? []) {
       dependents.add(dependerName)
     }
 
     const devOnly = hasExplicitDevFlags
-      ? packages[nv]!.devExplicit === true
+      ? packages[nv]?.devExplicit === true
       : !prodReachable.has(nv) && devReachable.has(nv)
 
     result.push({

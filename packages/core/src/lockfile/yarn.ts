@@ -30,8 +30,9 @@ function buildDependentsMap(entries: Entries): Map<string, Set<string>> {
     const name = nv.slice(0, nv.lastIndexOf('@'))
     for (const [depName, depVersion] of Object.entries(deps)) {
       const depNv = `${depName}@${depVersion}`
-      if (!m.has(depNv)) m.set(depNv, new Set())
-      m.get(depNv)!.add(name)
+      const depSet = m.get(depNv) ?? new Set<string>()
+      depSet.add(name)
+      m.set(depNv, depSet)
     }
   }
   return m
@@ -50,7 +51,9 @@ function bfsDepths(roots: string[], entries: Entries): Map<string, number> {
     }
   }
   while (queue.length > 0) {
-    const { nv, depth } = queue.shift()!
+    const item = queue.shift()
+    if (item === undefined) break
+    const { nv, depth } = item
     const entry = entries.get(nv)
     if (entry === undefined) continue
     for (const [depName, depVersion] of Object.entries(entry.deps)) {
@@ -77,7 +80,8 @@ function bfsReachable(roots: string[], entries: Entries): Set<string> {
     }
   }
   while (queue.length > 0) {
-    const nv = queue.shift()!
+    const nv = queue.shift()
+    if (nv === undefined) break
     const entry = entries.get(nv)
     if (entry === undefined) continue
     for (const [depName, depVersion] of Object.entries(entry.deps)) {
@@ -106,7 +110,7 @@ function buildResult(entries: Entries, packageJson: RootPackageJson): ResolvedPa
     const name = nv.slice(0, nv.lastIndexOf('@'))
     const dependents = new Set<string>()
     if (prodRoots.includes(name) || devRoots.includes(name)) dependents.add('.')
-    for (const dependerName of (dependentsMap.get(nv) ?? [])) {
+    for (const dependerName of dependentsMap.get(nv) ?? []) {
       dependents.add(dependerName)
     }
     result.push({
@@ -180,7 +184,7 @@ function parseYarnBerry(content: string, packageJson: RootPackageJson): Resolved
     for (const key of rawKey.split(', ')) {
       const trimmed = key.trim().replace(/@(?:npm|workspace|patch|portal|link|exec|file):/g, '@')
       const name = nameFromYarnKey(trimmed)
-      const version = v['version'] as string
+      const version = v['version']
       const nv = `${name}@${version}`
       if (!entries.has(nv)) {
         const rawDeps = (v['dependencies'] ?? {}) as Record<string, string>

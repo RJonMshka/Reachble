@@ -12,7 +12,7 @@ function readFixture(rel: string): string {
 }
 
 const PKG_JSON: RootPackageJson = JSON.parse(
-  readFileSync(join(FIXTURES, 'yarn-v1/package.json'), 'utf-8')
+  readFileSync(join(FIXTURES, 'yarn-v1/package.json'), 'utf-8'),
 ) as RootPackageJson
 
 describe('parseYarnLock — v1 classic', () => {
@@ -36,32 +36,33 @@ describe('parseYarnLock — v1 classic', () => {
   it('includes express as prod dep at depth 1', () => {
     const express = pkgs.find((p) => p.name === 'express')
     expect(express).toBeDefined()
-    expect(express!.version).toBe('4.18.2')
-    expect(express!.depth).toBe(1)
-    expect(express!.devOnly).toBe(false)
-    expect(express!.dependents).toContain('.')
+    expect(express?.version).toBe('4.18.2')
+    expect(express?.depth).toBe(1)
+    expect(express?.devOnly).toBe(false)
+    expect(express?.dependents).toContain('.')
   })
 
   it('includes body-parser as transitive dep at depth 2', () => {
     const bp = pkgs.find((p) => p.name === 'body-parser')
     expect(bp).toBeDefined()
-    expect(bp!.depth).toBe(2)
-    expect(bp!.devOnly).toBe(false)
-    expect(bp!.dependents).toContain('express')
+    expect(bp?.depth).toBe(2)
+    expect(bp?.devOnly).toBe(false)
+    expect(bp?.dependents).toContain('express')
   })
 
   it('marks typescript as devOnly', () => {
     const ts = pkgs.find((p) => p.name === 'typescript')
     expect(ts).toBeDefined()
-    expect(ts!.devOnly).toBe(true)
-    expect(ts!.dependents).toContain('.')
+    expect(ts?.devOnly).toBe(true)
+    expect(ts?.dependents).toContain('.')
   })
 })
 
 describe('parseYarnLock — error cases', () => {
   it('throws LockfileParseError when lockfile has git conflict markers', () => {
     // @yarnpkg/lockfile returns type:'conflict' for conflicted files, failing our schema
-    const conflicted = '# yarn lockfile v1\n<<<<<<< HEAD\nexpress@^4.0.0:\n  version "4.17.0"\n=======\n'
+    const conflicted =
+      '# yarn lockfile v1\n<<<<<<< HEAD\nexpress@^4.0.0:\n  version "4.17.0"\n=======\n'
     expect(() => parseYarnLock(conflicted, {})).toThrow(LockfileParseError)
   })
 })

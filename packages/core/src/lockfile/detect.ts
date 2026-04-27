@@ -29,7 +29,7 @@ export async function detectAndParse(projectDir: string): Promise<ResolvedPackag
     if (pkgJsonContent === null) {
       throw new LockfileParseError(
         'yarn.lock',
-        'yarn.lock found but package.json is missing — needed for devOnly detection'
+        'yarn.lock found but package.json is missing — needed for devOnly detection',
       )
     }
     let pkgJsonRaw: unknown
@@ -44,6 +44,6 @@ export async function detectAndParse(projectDir: string): Promise<ResolvedPackag
 
   throw new LockfileParseError(
     'none',
-    `no lockfile found in ${projectDir} — expected pnpm-lock.yaml, package-lock.json, or yarn.lock`
+    `no lockfile found in ${projectDir} — expected pnpm-lock.yaml, package-lock.json, or yarn.lock`,
   )
 }

@@ -31,31 +31,31 @@ describe('parseNpmLock — v2', () => {
   it('includes express as prod dep at depth 1', () => {
     const express = pkgs.find((p) => p.name === 'express')
     expect(express).toBeDefined()
-    expect(express!.version).toBe('4.18.2')
-    expect(express!.depth).toBe(1)
-    expect(express!.devOnly).toBe(false)
-    expect(express!.dependents).toContain('.')
+    expect(express?.version).toBe('4.18.2')
+    expect(express?.depth).toBe(1)
+    expect(express?.devOnly).toBe(false)
+    expect(express?.dependents).toContain('.')
   })
 
   it('includes body-parser as transitive prod dep at depth 1 (hoisted)', () => {
     const bp = pkgs.find((p) => p.name === 'body-parser')
     expect(bp).toBeDefined()
-    expect(bp!.depth).toBe(1)
-    expect(bp!.devOnly).toBe(false)
-    expect(bp!.dependents).toContain('express')
+    expect(bp?.depth).toBe(1)
+    expect(bp?.devOnly).toBe(false)
+    expect(bp?.dependents).toContain('express')
   })
 
   it('marks typescript as devOnly', () => {
     const ts = pkgs.find((p) => p.name === 'typescript')
     expect(ts).toBeDefined()
-    expect(ts!.devOnly).toBe(true)
-    expect(ts!.dependents).toContain('.')
+    expect(ts?.devOnly).toBe(true)
+    expect(ts?.dependents).toContain('.')
   })
 
   it('includes nested debug at depth 2 (under express/node_modules)', () => {
     const debug = pkgs.find((p) => p.name === 'debug')
     expect(debug).toBeDefined()
-    expect(debug!.depth).toBe(2)
+    expect(debug?.depth).toBe(2)
   })
 
   it('does not include the root package', () => {

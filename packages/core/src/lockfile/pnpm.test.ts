@@ -31,25 +31,25 @@ describe('parsePnpmLock — v6', () => {
   it('includes express as prod dep at depth 1', () => {
     const express = pkgs.find((p) => p.name === 'express')
     expect(express).toBeDefined()
-    expect(express!.version).toBe('4.18.2')
-    expect(express!.depth).toBe(1)
-    expect(express!.devOnly).toBe(false)
-    expect(express!.dependents).toContain('.')
+    expect(express?.version).toBe('4.18.2')
+    expect(express?.depth).toBe(1)
+    expect(express?.devOnly).toBe(false)
+    expect(express?.dependents).toContain('.')
   })
 
   it('includes body-parser as transitive dep at depth 2', () => {
     const bp = pkgs.find((p) => p.name === 'body-parser')
     expect(bp).toBeDefined()
-    expect(bp!.depth).toBe(2)
-    expect(bp!.devOnly).toBe(false)
-    expect(bp!.dependents).toContain('express')
+    expect(bp?.depth).toBe(2)
+    expect(bp?.devOnly).toBe(false)
+    expect(bp?.dependents).toContain('express')
   })
 
   it('marks typescript as devOnly', () => {
     const ts = pkgs.find((p) => p.name === 'typescript')
     expect(ts).toBeDefined()
-    expect(ts!.devOnly).toBe(true)
-    expect(ts!.dependents).toContain('.')
+    expect(ts?.devOnly).toBe(true)
+    expect(ts?.dependents).toContain('.')
   })
 })
 

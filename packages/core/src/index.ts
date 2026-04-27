@@ -1,5 +1,7 @@
 export * from './analysis/index.js'
+export * from './config.js'
 export * from './cve/index.js'
 export * from './errors.js'
 export * from './lockfile/index.js'
 export * from './types.js'
+export * from './verdict.js'

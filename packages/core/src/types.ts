@@ -47,7 +47,7 @@ export interface EntryPoint {
 }
 
 export interface Evidence {
-  type: 'import' | 'call-path' | 'entry-point' | 'symbol-source'
+  type: 'import' | 'call-path' | 'entry-point' | 'symbol-source' | 'suppression'
   description: string
   file?: string
   line?: number

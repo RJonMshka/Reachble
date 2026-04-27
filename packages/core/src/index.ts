@@ -1,2 +1,3 @@
 export * from './errors.js'
+export * from './lockfile/index.js'
 export * from './types.js'

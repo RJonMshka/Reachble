@@ -1,0 +1,35 @@
+lockfileVersion: '6.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      express:
+        specifier: ^4.18.2
+        version: 4.18.2
+    devDependencies:
+      typescript:
+        specifier: ^5.0.0
+        version: 5.4.2
+
+packages:
+
+  /body-parser@1.20.1:
+    resolution: {integrity: sha512-jWi1ZwAyTFAQ==}
+    dev: false
+
+  /express@4.18.2:
+    resolution: {integrity: sha512-KiADSmFP==}
+    engines: {node: '>= 0.10.0'}
+    dependencies:
+      body-parser: 1.20.1
+    dev: false
+
+  /typescript@5.4.2:
+    resolution: {integrity: sha512-KDL==}
+    engines: {node: '>=14.17'}
+    dev: true

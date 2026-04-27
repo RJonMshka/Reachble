@@ -79,3 +79,43 @@ export interface VexStatement {
   impactStatement?: string
   evidenceRefs: string[]
 }
+
+// M5 — Import graph types
+
+export interface ImportRecord {
+  package: string
+  /** Named symbols imported; empty means all-symbols (namespace/default/dynamic require). */
+  symbols: string[]
+  kind:
+    | 'named'
+    | 'default'
+    | 'namespace'
+    | 'require-static'
+    | 'require-dynamic'
+    | 're-export'
+    | 're-export-all'
+  line: number
+  caveat?: string
+}
+
+/** file path → list of import records found in that file */
+export type ImportGraph = Map<string, ImportRecord[]>
+
+export interface FileImportMatch {
+  file: string
+  line: number
+  kind: ImportRecord['kind']
+  /** Symbols from the import that appear in the CVE's affected symbol list. */
+  matchedSymbols: string[]
+  caveat?: string
+}
+
+export interface ImportMatchResult {
+  packageName: string
+  matches: FileImportMatch[]
+  /**
+   * True when at least one match is namespace / default / dynamic-require,
+   * meaning we cannot rule out the vulnerable symbol being used.
+   */
+  conservative: boolean
+}

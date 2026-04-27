@@ -1,3 +1,4 @@
+export * from './analysis/index.js'
 export * from './cve/index.js'
 export * from './errors.js'
 export * from './lockfile/index.js'

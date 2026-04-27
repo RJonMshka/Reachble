@@ -48,8 +48,10 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@typescript-eslint/parser": "^8.59.1",
     "@yarnpkg/lockfile": "^1.1.0",
     "better-sqlite3": "^12.9.0",
+    "ignore": "^7.0.5",
     "js-yaml": "^4.1.1",
     "p-limit": "^7.3.0",
     "zod": "^4.3.6"

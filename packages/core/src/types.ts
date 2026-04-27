@@ -25,6 +25,7 @@ export interface CveRecord {
   fixCommitUrls: string[]
   description: string
   publishedAt: Date
+  fixedIn?: string
 }
 
 export interface CallEdge {

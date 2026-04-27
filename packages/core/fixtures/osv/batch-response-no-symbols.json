@@ -1,0 +1,41 @@
+{
+  "results": [
+    {
+      "vulns": [
+        {
+          "id": "GHSA-jf85-cpcp-92a4",
+          "aliases": ["CVE-2020-8203"],
+          "summary": "Prototype Pollution in lodash",
+          "details": "Prototype pollution attack when using zipObjectDeep in lodash before 4.17.20.",
+          "modified": "2023-11-06T00:00:00Z",
+          "published": "2020-07-15T00:00:00Z",
+          "affected": [
+            {
+              "package": { "name": "lodash", "ecosystem": "npm" },
+              "ranges": [
+                {
+                  "type": "SEMVER",
+                  "events": [
+                    { "introduced": "0" },
+                    { "fixed": "4.17.20" }
+                  ]
+                }
+              ],
+              "ecosystem_specific": {},
+              "database_specific": {
+                "severity": "HIGH"
+              }
+            }
+          ],
+          "references": [
+            { "type": "FIX", "url": "https://github.com/lodash/lodash/pull/4759" }
+          ],
+          "database_specific": {
+            "severity": "HIGH",
+            "cwe_ids": ["CWE-1321"]
+          }
+        }
+      ]
+    }
+  ]
+}

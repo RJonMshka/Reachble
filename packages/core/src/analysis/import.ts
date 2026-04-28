@@ -2,9 +2,10 @@
 import { parse } from '@typescript-eslint/parser'
 import ignore from 'ignore'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { extname, join, relative } from 'node:path'
+import { dirname, extname, join, relative, resolve } from 'node:path'
 import type {
   AffectedSymbol,
+  FileGraph,
   FileImportMatch,
   ImportGraph,
   ImportMatchResult,
@@ -352,6 +353,94 @@ export function buildImportGraph(dir: string, options: AnalyzeOptions = {}): Imp
   for (const file of files) {
     const records = parseFileImports(file)
     if (records.length > 0) graph.set(file, records)
+  }
+
+  return graph
+}
+
+function resolveLocalImport(
+  fromFile: string,
+  importPath: string,
+  knownFiles: Set<string>,
+  extensions: string[],
+): string | null {
+  const base = resolve(dirname(fromFile), importPath)
+  if (knownFiles.has(base)) return base
+  for (const ext of extensions) {
+    const candidate = base + ext
+    if (knownFiles.has(candidate)) return candidate
+  }
+  for (const ext of extensions) {
+    const candidate = join(base, `index${ext}`)
+    if (knownFiles.has(candidate)) return candidate
+  }
+  return null
+}
+
+function parseLocalFileImports(
+  filePath: string,
+  knownFiles: Set<string>,
+  extensions: string[],
+): string[] {
+  let code: string
+  try {
+    code = readFileSync(filePath, 'utf8')
+  } catch {
+    return []
+  }
+
+  let body: AstNode[]
+  try {
+    const ast = parse(code, {
+      jsx: filePath.endsWith('.tsx') || filePath.endsWith('.jsx'),
+      loc: true,
+      range: false,
+    })
+    body = (ast as AstNode).body as AstNode[]
+  } catch {
+    return []
+  }
+
+  const result: string[] = []
+  const seen = new Set<string>()
+
+  function addLocal(source: string): void {
+    if (!source.startsWith('.')) return
+    const resolved = resolveLocalImport(filePath, source, knownFiles, extensions)
+    if (resolved !== null && !seen.has(resolved)) {
+      seen.add(resolved)
+      result.push(resolved)
+    }
+  }
+
+  for (const node of body) {
+    const type = node.type as string
+    if (
+      type === 'ImportDeclaration' ||
+      ((type === 'ExportNamedDeclaration' || type === 'ExportAllDeclaration') && node.source)
+    ) {
+      const src: unknown = node.source?.value
+      if (typeof src === 'string') addLocal(src)
+    }
+  }
+
+  return result
+}
+
+/**
+ * Build a file-to-file import graph for all JS/TS files under dir.
+ * Each key is a file; the value is the list of resolved local files it imports.
+ * Only relative imports (./…) are tracked; package imports are excluded.
+ */
+export function buildFileGraph(dir: string, options: AnalyzeOptions = {}): FileGraph {
+  const files = discoverFiles(dir, options)
+  const knownFiles = new Set(files)
+  const extensions = options.extensions ?? ['.ts', '.tsx', '.js', '.mjs', '.cjs']
+  const graph: FileGraph = new Map()
+
+  for (const file of files) {
+    const locals = parseLocalFileImports(file, knownFiles, extensions)
+    if (locals.length > 0) graph.set(file, locals)
   }
 
   return graph

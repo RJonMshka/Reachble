@@ -101,6 +101,9 @@ export interface ImportRecord {
 /** file path → list of import records found in that file */
 export type ImportGraph = Map<string, ImportRecord[]>
 
+/** file path → list of resolved local file paths it directly imports */
+export type FileGraph = Map<string, string[]>
+
 export interface FileImportMatch {
   file: string
   line: number

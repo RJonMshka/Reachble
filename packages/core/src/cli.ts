@@ -5,7 +5,7 @@ import { cwd } from 'node:process'
 import chalk from 'chalk'
 import { Command } from 'commander'
 import ora from 'ora'
-import { buildImportGraph } from './analysis/import.js'
+import { buildFileGraph, buildImportGraph, detectEntryPoints } from './analysis/index.js'
 import type { FailOnLevel } from './config.js'
 import { loadConfig } from './config.js'
 import { resolveCves } from './cve/resolver.js'
@@ -144,11 +144,19 @@ async function runScan(opts: ScanOptions): Promise<void> {
 
   // ── Import graph ──────────────────────────────────────────────────────────
   const graphSpinner = ora('Analyzing imports…').start()
-  const graph = buildImportGraph(projectDir, {
-    ...(effectiveIgnorePatterns.length > 0 ? { ignorePatterns: effectiveIgnorePatterns } : {}),
-  })
+  const analyzeOpts =
+    effectiveIgnorePatterns.length > 0 ? { ignorePatterns: effectiveIgnorePatterns } : {}
+  const graph = buildImportGraph(projectDir, analyzeOpts)
   const fileCount = graph.size
   graphSpinner.succeed(`Analyzed ${String(fileCount)} file${fileCount !== 1 ? 's' : ''}`)
+
+  // ── Entry point detection + file graph ────────────────────────────────────
+  const epSpinner = ora('Detecting entry points…').start()
+  const entryPoints = detectEntryPoints(projectDir, analyzeOpts)
+  const fileGraph = buildFileGraph(projectDir, analyzeOpts)
+  epSpinner.succeed(
+    `Found ${String(entryPoints.length)} entry point${entryPoints.length !== 1 ? 's' : ''}`,
+  )
 
   // ── CVE resolution ─────────────────────────────────────────────────────────
   const cveSpinner = ora('Resolving CVEs…').start()
@@ -163,6 +171,8 @@ async function runScan(opts: ScanOptions): Promise<void> {
   const verdictSpinner = ora('Scoring verdicts…').start()
   const results = scoreVerdicts(packages, cveMap, graph, {
     ...(config.suppressions !== undefined ? { suppressions: config.suppressions } : {}),
+    entryPoints,
+    fileGraph,
   })
   verdictSpinner.succeed('Verdicts computed')
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { ImportMatchResult } from './types.js'
+import type { EntryPoint, FileGraph, ImportMatchResult } from './types.js'
 import type { CveRecord, ImportGraph, ResolvedPackage } from './types.js'
 import { computeVerdict, scoreVerdicts } from './verdict.js'
 
@@ -364,5 +364,195 @@ describe('scoreVerdicts — no CVEs', () => {
     const pkg = makePkg()
     const results = scoreVerdicts([pkg], new Map(), new Map())
     expect(results).toHaveLength(0)
+  })
+})
+
+// ── Entry point elevation ─────────────────────────────────────────────────────
+
+function makeEntryPoint(overrides: Partial<EntryPoint> = {}): EntryPoint {
+  return {
+    file: '/app/src/render.ts',
+    line: 10,
+    kind: 'http',
+    framework: 'express',
+    authenticated: false,
+    description: 'Express GET /items',
+    ...overrides,
+  }
+}
+
+describe('computeVerdict — entry point elevation', () => {
+  it('LOW → CRITICAL when importing file has unauthenticated HTTP entry point', () => {
+    const ep = makeEntryPoint({ file: '/app/src/render.ts', authenticated: false })
+    const r = computeVerdict(makePkg(), makeCve(), exactMatch(), { entryPoints: [ep] })
+    expect(r.verdict).toBe('CRITICAL')
+    expect(r.evidence.some((e) => e.type === 'entry-point')).toBe(true)
+  })
+
+  it('LOW → CRITICAL when importing file has CLI entry point', () => {
+    const ep: EntryPoint = {
+      file: '/app/src/render.ts',
+      line: 10,
+      kind: 'cli',
+      authenticated: false,
+      description: 'CLI parse(process.argv)',
+    }
+    const r = computeVerdict(makePkg(), makeCve(), exactMatch(), { entryPoints: [ep] })
+    expect(r.verdict).toBe('CRITICAL')
+  })
+
+  it('LOW → HIGH when importing file has authenticated HTTP entry point', () => {
+    const ep = makeEntryPoint({ file: '/app/src/render.ts', authenticated: true })
+    const r = computeVerdict(makePkg(), makeCve(), exactMatch(), { entryPoints: [ep] })
+    expect(r.verdict).toBe('HIGH')
+    expect(r.evidence.some((e) => e.type === 'entry-point')).toBe(true)
+  })
+
+  it('unauthenticated wins when both auth and unauth entry points present in same file', () => {
+    const eps = [
+      makeEntryPoint({ file: '/app/src/render.ts', authenticated: true }),
+      makeEntryPoint({ file: '/app/src/render.ts', authenticated: false }),
+    ]
+    const r = computeVerdict(makePkg(), makeCve(), exactMatch(), { entryPoints: eps })
+    expect(r.verdict).toBe('CRITICAL')
+  })
+
+  it('no elevation when entry point is in a different file than the import', () => {
+    const ep = makeEntryPoint({ file: '/app/src/other.ts', authenticated: false })
+    const r = computeVerdict(makePkg(), makeCve(), exactMatch(), { entryPoints: [ep] })
+    expect(r.verdict).toBe('LOW')
+  })
+
+  it('SAFE stays SAFE even when entry points exist (package not imported)', () => {
+    const ep = makeEntryPoint({ file: '/app/src/render.ts', authenticated: false })
+    const r = computeVerdict(makePkg(), makeCve(), noImports(), { entryPoints: [ep] })
+    expect(r.verdict).toBe('SAFE')
+  })
+
+  it('devOnly cap clamps CRITICAL → LOW even with unauthenticated entry point', () => {
+    const pkg = makePkg({ devOnly: true })
+    const ep = makeEntryPoint({ file: '/app/src/render.ts', authenticated: false })
+    const r = computeVerdict(pkg, makeCve(), exactMatch(), { entryPoints: [ep] })
+    expect(r.verdict).toBe('LOW')
+    expect(r.reason).toMatch(/dev-only/)
+  })
+
+  it('entry-point evidence carries a caveat noting import-level limitation', () => {
+    const ep = makeEntryPoint({ file: '/app/src/render.ts', authenticated: false })
+    const r = computeVerdict(makePkg(), makeCve(), exactMatch(), { entryPoints: [ep] })
+    const epEvidence = r.evidence.find((e) => e.type === 'entry-point')
+    expect(epEvidence?.caveat).toMatch(/call graph/)
+  })
+
+  it('reason mentions unauthenticated for CRITICAL elevation', () => {
+    const ep = makeEntryPoint({ file: '/app/src/render.ts', authenticated: false })
+    const r = computeVerdict(makePkg(), makeCve(), exactMatch(), { entryPoints: [ep] })
+    expect(r.reason).toMatch(/unauthenticated/)
+  })
+
+  it('reason mentions authenticated for HIGH elevation', () => {
+    const ep = makeEntryPoint({ file: '/app/src/render.ts', authenticated: true })
+    const r = computeVerdict(makePkg(), makeCve(), exactMatch(), { entryPoints: [ep] })
+    expect(r.reason).toMatch(/authenticated/)
+  })
+})
+
+describe('scoreVerdicts — entry point integration', () => {
+  it('passes entry points through and produces CRITICAL results', () => {
+    const pkg = makePkg()
+    const cve = makeCve()
+    const cveMap = new Map([['lodash@4.17.20', [cve]]])
+    const graph: ImportGraph = new Map([
+      [
+        '/app/src/routes.ts',
+        [{ package: 'lodash', symbols: ['template'], kind: 'named', line: 1 }],
+      ],
+    ])
+    const eps: EntryPoint[] = [makeEntryPoint({ file: '/app/src/routes.ts', authenticated: false })]
+    const results = scoreVerdicts([pkg], cveMap, graph, { entryPoints: eps })
+    expect(results[0]?.verdict).toBe('CRITICAL')
+  })
+})
+
+// ── Transitive file reachability ──────────────────────────────────────────────
+
+describe('computeVerdict — transitive entry point elevation', () => {
+  // EP in /app/src/server.ts → imports /app/src/routes.ts → routes.ts imports lodash
+  const epFile = '/app/src/server.ts'
+  const importFile = '/app/src/routes.ts'
+
+  const fileGraph: FileGraph = new Map([[epFile, [importFile]]])
+
+  it('LOW → CRITICAL when entry point transitively reaches the importing file (1 hop)', () => {
+    const match: ImportMatchResult = {
+      packageName: 'lodash',
+      matches: [{ file: importFile, line: 1, kind: 'named', matchedSymbols: ['template'] }],
+      conservative: false,
+      packageSeen: true,
+    }
+    const ep = makeEntryPoint({ file: epFile, authenticated: false })
+    const r = computeVerdict(makePkg(), makeCve(), match, { entryPoints: [ep], fileGraph })
+    expect(r.verdict).toBe('CRITICAL')
+    expect(r.evidence.some((e) => e.type === 'entry-point')).toBe(true)
+  })
+
+  it('LOW → HIGH via transitive reach with authenticated entry point', () => {
+    const match: ImportMatchResult = {
+      packageName: 'lodash',
+      matches: [{ file: importFile, line: 1, kind: 'named', matchedSymbols: ['template'] }],
+      conservative: false,
+      packageSeen: true,
+    }
+    const ep = makeEntryPoint({ file: epFile, authenticated: true })
+    const r = computeVerdict(makePkg(), makeCve(), match, { entryPoints: [ep], fileGraph })
+    expect(r.verdict).toBe('HIGH')
+  })
+
+  it('no elevation when entry point file does not reach the importing file', () => {
+    const match: ImportMatchResult = {
+      packageName: 'lodash',
+      matches: [
+        { file: '/app/src/other.ts', line: 1, kind: 'named', matchedSymbols: ['template'] },
+      ],
+      conservative: false,
+      packageSeen: true,
+    }
+    const ep = makeEntryPoint({ file: epFile, authenticated: false })
+    const r = computeVerdict(makePkg(), makeCve(), match, { entryPoints: [ep], fileGraph })
+    expect(r.verdict).toBe('LOW')
+  })
+
+  it('multi-hop: EP → A → B → C, vulnerable in C → CRITICAL', () => {
+    const a = '/app/src/a.ts'
+    const b = '/app/src/b.ts'
+    const c = '/app/src/c.ts'
+    const multiHopGraph: FileGraph = new Map([
+      [epFile, [a]],
+      [a, [b]],
+      [b, [c]],
+    ])
+    const match: ImportMatchResult = {
+      packageName: 'lodash',
+      matches: [{ file: c, line: 1, kind: 'named', matchedSymbols: ['template'] }],
+      conservative: false,
+      packageSeen: true,
+    }
+    const ep = makeEntryPoint({ file: epFile, authenticated: false })
+    const r = computeVerdict(makePkg(), makeCve(), match, {
+      entryPoints: [ep],
+      fileGraph: multiHopGraph,
+    })
+    expect(r.verdict).toBe('CRITICAL')
+  })
+
+  it('fileGraph without entryPoints does nothing', () => {
+    const match: ImportMatchResult = {
+      packageName: 'lodash',
+      matches: [{ file: importFile, line: 1, kind: 'named', matchedSymbols: ['template'] }],
+      conservative: false,
+      packageSeen: true,
+    }
+    const r = computeVerdict(makePkg(), makeCve(), match, { fileGraph })
+    expect(r.verdict).toBe('LOW')
   })
 })

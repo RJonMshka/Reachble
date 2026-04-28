@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
 import type { AffectedSymbol, ImportGraph } from '../types.js'
-import { buildImportGraph, extractPackageName, matchImports } from './import.js'
+import { buildFileGraph, buildImportGraph, extractPackageName, matchImports } from './import.js'
 
 const FIXTURES = join(import.meta.dirname, '../../fixtures/import-graph')
 
@@ -399,5 +399,60 @@ describe('matchImports', () => {
     const result = matchImports(graph, 'lodash', affected)
     expect(result.packageName).toBe('lodash')
     expect(result.packageSeen).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// buildFileGraph
+// ---------------------------------------------------------------------------
+
+const FILE_GRAPH_FIXTURES = join(import.meta.dirname, '../../fixtures/file-graph')
+
+describe('buildFileGraph', () => {
+  const A = join(FILE_GRAPH_FIXTURES, 'a.ts')
+  const B = join(FILE_GRAPH_FIXTURES, 'b.ts')
+  const C = join(FILE_GRAPH_FIXTURES, 'c.ts')
+  const D = join(FILE_GRAPH_FIXTURES, 'd.ts')
+
+  it('maps a.ts → [b.ts] (direct local import)', () => {
+    const fg = buildFileGraph(FILE_GRAPH_FIXTURES)
+    expect(fg.get(A)).toEqual([B])
+  })
+
+  it('maps b.ts → [c.ts]', () => {
+    const fg = buildFileGraph(FILE_GRAPH_FIXTURES)
+    expect(fg.get(B)).toEqual([C])
+  })
+
+  it('c.ts has no local imports — not in graph', () => {
+    const fg = buildFileGraph(FILE_GRAPH_FIXTURES)
+    expect(fg.has(C)).toBe(false)
+  })
+
+  it('d.ts has no local imports — not in graph', () => {
+    const fg = buildFileGraph(FILE_GRAPH_FIXTURES)
+    expect(fg.has(D)).toBe(false)
+  })
+
+  it('package imports are not included as file edges', () => {
+    const fg = buildFileGraph(FILE_GRAPH_FIXTURES)
+    // a.ts imports lodash but that should not appear in file edges
+    const edges = fg.get(A) ?? []
+    expect(edges.every((f) => f.endsWith('.ts'))).toBe(true)
+    expect(edges.some((f) => f.includes('lodash'))).toBe(false)
+  })
+
+  it('is deterministic across two calls', () => {
+    const fg1 = buildFileGraph(FILE_GRAPH_FIXTURES)
+    const fg2 = buildFileGraph(FILE_GRAPH_FIXTURES)
+    expect([...fg1.entries()]).toEqual([...fg2.entries()])
+  })
+
+  it('returns empty map for dir with no local imports', () => {
+    const fg = buildFileGraph(join(FILE_GRAPH_FIXTURES, '..', 'import-graph'))
+    // import-graph fixtures only import packages, never ./local files
+    for (const edges of fg.values()) {
+      expect(edges).toHaveLength(0)
+    }
   })
 })

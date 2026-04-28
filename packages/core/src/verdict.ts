@@ -2,7 +2,9 @@ import { matchImports } from './analysis/index.js'
 import type { Suppression } from './config.js'
 import type {
   CveRecord,
+  EntryPoint,
   Evidence,
+  FileGraph,
   ImportGraph,
   ImportMatchResult,
   ResolvedPackage,
@@ -27,6 +29,58 @@ function applyEpss(verdict: Verdict, epss: number): Verdict {
 
 function clampToLow(verdict: Verdict): Verdict {
   return verdict === 'CRITICAL' || verdict === 'HIGH' ? 'LOW' : verdict
+}
+
+function transitiveReachable(start: string, fileGraph: FileGraph): Set<string> {
+  const visited = new Set<string>([start])
+  const queue = [start]
+  while (queue.length > 0) {
+    const current = queue.shift()
+    if (current === undefined) break
+    for (const dep of fileGraph.get(current) ?? []) {
+      if (!visited.has(dep)) {
+        visited.add(dep)
+        queue.push(dep)
+      }
+    }
+  }
+  return visited
+}
+
+function assessEntryPointReachability(
+  matchResult: ImportMatchResult,
+  entryPoints: EntryPoint[],
+  fileGraph?: FileGraph,
+): { verdict: Verdict; evidence: Evidence[] } | null {
+  const importingFiles = new Set(matchResult.matches.map((m) => m.file))
+
+  function epReaches(ep: EntryPoint): boolean {
+    if (importingFiles.has(ep.file)) return true
+    if (fileGraph === undefined) return false
+    const reachable = transitiveReachable(ep.file, fileGraph)
+    for (const f of importingFiles) {
+      if (reachable.has(f)) return true
+    }
+    return false
+  }
+
+  const reachable = entryPoints.filter(epReaches)
+  if (reachable.length === 0) return null
+
+  const unauthed = reachable.filter((ep) => !ep.authenticated)
+  const targetVerdict: Verdict = unauthed.length > 0 ? 'CRITICAL' : 'HIGH'
+  const relevant = unauthed.length > 0 ? unauthed : reachable
+
+  return {
+    verdict: targetVerdict,
+    evidence: relevant.map((ep) => ({
+      type: 'entry-point' as const,
+      description: `${matchResult.packageName} imported in ${ep.description}`,
+      file: ep.file,
+      line: ep.line,
+      caveat: 'import-level co-location — V1 call graph will confirm call path',
+    })),
+  }
 }
 
 interface BaseAssessment {
@@ -144,6 +198,8 @@ function assessImportMatch(matchResult: ImportMatchResult, cve: CveRecord): Base
 
 export interface ComputeVerdictOptions {
   suppression?: Suppression
+  entryPoints?: EntryPoint[]
+  fileGraph?: FileGraph
 }
 
 /**
@@ -159,6 +215,17 @@ export function computeVerdict(
   const assessment = assessImportMatch(matchResult, cve)
   const { confidence } = assessment
   let { verdict, reason, evidence } = assessment
+
+  // Entry point elevation: LOW → CRITICAL/HIGH when an entry point can reach the importing file
+  if (verdict === 'LOW' && opts.entryPoints !== undefined && opts.entryPoints.length > 0) {
+    const epResult = assessEntryPointReachability(matchResult, opts.entryPoints, opts.fileGraph)
+    if (epResult !== null) {
+      const tier = epResult.verdict === 'CRITICAL' ? 'unauthenticated' : 'authenticated'
+      verdict = epResult.verdict
+      reason = `${reason} — reachable from ${tier} entry point`
+      evidence = [...evidence, ...epResult.evidence]
+    }
+  }
 
   // EPSS adjustment (statistical elevation)
   const epssAdjusted = applyEpss(verdict, cve.epssScore)
@@ -227,6 +294,8 @@ export function computeVerdict(
 
 export interface ScoreOptions {
   suppressions?: Suppression[]
+  entryPoints?: EntryPoint[]
+  fileGraph?: FileGraph
 }
 
 /**
@@ -257,6 +326,8 @@ export function scoreVerdicts(
       )
       const verdictOpts: ComputeVerdictOptions = {}
       if (suppression !== undefined) verdictOpts.suppression = suppression
+      if (opts.entryPoints !== undefined) verdictOpts.entryPoints = opts.entryPoints
+      if (opts.fileGraph !== undefined) verdictOpts.fileGraph = opts.fileGraph
       results.push(computeVerdict(pkg, cve, matchResult, verdictOpts))
     }
   }

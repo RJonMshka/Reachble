@@ -5,7 +5,12 @@ import { cwd } from 'node:process'
 import chalk from 'chalk'
 import { Command } from 'commander'
 import ora from 'ora'
-import { buildFileGraph, buildImportGraph, detectEntryPoints } from './analysis/index.js'
+import {
+  buildCallGraph,
+  buildFileGraph,
+  buildImportGraph,
+  detectEntryPoints,
+} from './analysis/index.js'
 import type { FailOnLevel } from './config.js'
 import { loadConfig } from './config.js'
 import { resolveCves } from './cve/resolver.js'
@@ -158,6 +163,18 @@ async function runScan(opts: ScanOptions): Promise<void> {
     `Found ${String(entryPoints.length)} entry point${entryPoints.length !== 1 ? 's' : ''}`,
   )
 
+  // ── Call graph ────────────────────────────────────────────────────────────
+  const cgSpinner = ora('Building call graph…').start()
+  const callGraph = buildCallGraph(projectDir, analyzeOpts)
+  if (callGraph !== null) {
+    const callFileCount = callGraph.size
+    cgSpinner.succeed(
+      `Call graph: ${String(callFileCount)} file${callFileCount !== 1 ? 's' : ''} with edges`,
+    )
+  } else {
+    cgSpinner.info('Call graph skipped (no tsconfig.json found)')
+  }
+
   // ── CVE resolution ─────────────────────────────────────────────────────────
   const cveSpinner = ora('Resolving CVEs…').start()
   const cveMap = await resolveCves(packages, {
@@ -173,6 +190,7 @@ async function runScan(opts: ScanOptions): Promise<void> {
     ...(config.suppressions !== undefined ? { suppressions: config.suppressions } : {}),
     entryPoints,
     fileGraph,
+    ...(callGraph !== null ? { callGraph } : {}),
   })
   verdictSpinner.succeed('Verdicts computed')
 

@@ -104,6 +104,9 @@ export type ImportGraph = Map<string, ImportRecord[]>
 /** file path → list of resolved local file paths it directly imports */
 export type FileGraph = Map<string, string[]>
 
+/** file path → call edges originating from that file */
+export type CallGraph = Map<string, CallEdge[]>
+
 export interface FileImportMatch {
   file: string
   line: number

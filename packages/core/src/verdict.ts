@@ -1,6 +1,8 @@
 import { matchImports } from './analysis/index.js'
 import type { Suppression } from './config.js'
 import type {
+  CallEdge,
+  CallGraph,
   CveRecord,
   EntryPoint,
   Evidence,
@@ -47,18 +49,46 @@ function transitiveReachable(start: string, fileGraph: FileGraph): Set<string> {
   return visited
 }
 
+/** Return call edges in `callGraph` where the callee matches package + any of the symbols. */
+function findCallSites(
+  callGraph: CallGraph,
+  packageName: string,
+  symbolNames: string[],
+): CallEdge[] {
+  const symbolSet = new Set(symbolNames)
+  const sites: CallEdge[] = []
+  for (const edges of callGraph.values()) {
+    for (const edge of edges) {
+      if (edge.calleePackage === packageName && symbolSet.has(edge.calleeSymbol)) {
+        sites.push(edge)
+      }
+    }
+  }
+  return sites
+}
+
 function assessEntryPointReachability(
   matchResult: ImportMatchResult,
   entryPoints: EntryPoint[],
   fileGraph?: FileGraph,
+  callSites?: CallEdge[],
 ): { verdict: Verdict; evidence: Evidence[] } | null {
-  const importingFiles = new Set(matchResult.matches.map((m) => m.file))
+  // Call graph provided but no matching call site → the symbol is never called; don't elevate.
+  if (callSites !== undefined && callSites.length === 0) return null
+
+  // If call-graph data is available, use it for precision; fall back to import sites.
+  const hasCallGraph = callSites !== undefined
+  const sourceFiles: Set<string> = hasCallGraph
+    ? new Set(callSites.map((e) => e.callerFile))
+    : new Set(matchResult.matches.map((m) => m.file))
+
+  if (sourceFiles.size === 0) return null
 
   function epReaches(ep: EntryPoint): boolean {
-    if (importingFiles.has(ep.file)) return true
+    if (sourceFiles.has(ep.file)) return true
     if (fileGraph === undefined) return false
     const reachable = transitiveReachable(ep.file, fileGraph)
-    for (const f of importingFiles) {
+    for (const f of sourceFiles) {
       if (reachable.has(f)) return true
     }
     return false
@@ -71,16 +101,35 @@ function assessEntryPointReachability(
   const targetVerdict: Verdict = unauthed.length > 0 ? 'CRITICAL' : 'HIGH'
   const relevant = unauthed.length > 0 ? unauthed : reachable
 
-  return {
-    verdict: targetVerdict,
-    evidence: relevant.map((ep) => ({
+  const evidence: Evidence[] = relevant.map((ep) => {
+    if (hasCallGraph) {
+      // Find the first call site reachable from this entry point
+      const site = callSites.find((e) => {
+        if (e.callerFile === ep.file) return true
+        if (fileGraph === undefined) return false
+        return transitiveReachable(ep.file, fileGraph).has(e.callerFile)
+      })
+      return {
+        type: 'call-path' as const,
+        description:
+          site !== undefined
+            ? `${site.callerFunction}() in ${ep.description} calls ${matchResult.packageName}.${site.calleeSymbol} at line ${String(site.line)}`
+            : `${matchResult.packageName} called from ${ep.description}`,
+        file: site?.callerFile ?? ep.file,
+        line: site?.line ?? ep.line,
+        ...(site !== undefined ? { callPath: [ep.description, `${site.callerFunction}()`] } : {}),
+      }
+    }
+    return {
       type: 'entry-point' as const,
       description: `${matchResult.packageName} imported in ${ep.description}`,
       file: ep.file,
       line: ep.line,
-      caveat: 'import-level co-location — V1 call graph will confirm call path',
-    })),
-  }
+      caveat: 'import-level co-location — call graph not available',
+    }
+  })
+
+  return { verdict: targetVerdict, evidence }
 }
 
 interface BaseAssessment {
@@ -200,6 +249,7 @@ export interface ComputeVerdictOptions {
   suppression?: Suppression
   entryPoints?: EntryPoint[]
   fileGraph?: FileGraph
+  callGraph?: CallGraph
 }
 
 /**
@@ -216,9 +266,22 @@ export function computeVerdict(
   const { confidence } = assessment
   let { verdict, reason, evidence } = assessment
 
-  // Entry point elevation: LOW → CRITICAL/HIGH when an entry point can reach the importing file
+  // Entry point elevation: LOW → CRITICAL/HIGH when an entry point can reach the call/import site
   if (verdict === 'LOW' && opts.entryPoints !== undefined && opts.entryPoints.length > 0) {
-    const epResult = assessEntryPointReachability(matchResult, opts.entryPoints, opts.fileGraph)
+    const callSites =
+      opts.callGraph !== undefined
+        ? findCallSites(
+            opts.callGraph,
+            pkg.name,
+            cve.affectedSymbols.map((s) => s.name),
+          )
+        : undefined
+    const epResult = assessEntryPointReachability(
+      matchResult,
+      opts.entryPoints,
+      opts.fileGraph,
+      callSites,
+    )
     if (epResult !== null) {
       const tier = epResult.verdict === 'CRITICAL' ? 'unauthenticated' : 'authenticated'
       verdict = epResult.verdict
@@ -296,6 +359,7 @@ export interface ScoreOptions {
   suppressions?: Suppression[]
   entryPoints?: EntryPoint[]
   fileGraph?: FileGraph
+  callGraph?: CallGraph
 }
 
 /**
@@ -328,6 +392,7 @@ export function scoreVerdicts(
       if (suppression !== undefined) verdictOpts.suppression = suppression
       if (opts.entryPoints !== undefined) verdictOpts.entryPoints = opts.entryPoints
       if (opts.fileGraph !== undefined) verdictOpts.fileGraph = opts.fileGraph
+      if (opts.callGraph !== undefined) verdictOpts.callGraph = opts.callGraph
       results.push(computeVerdict(pkg, cve, matchResult, verdictOpts))
     }
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { EntryPoint, FileGraph, ImportMatchResult } from './types.js'
+import type { CallGraph, EntryPoint, FileGraph, ImportMatchResult } from './types.js'
 import type { CveRecord, ImportGraph, ResolvedPackage } from './types.js'
 import { computeVerdict, scoreVerdicts } from './verdict.js'
 
@@ -554,5 +554,119 @@ describe('computeVerdict — transitive entry point elevation', () => {
     }
     const r = computeVerdict(makePkg(), makeCve(), match, { fileGraph })
     expect(r.verdict).toBe('LOW')
+  })
+})
+
+// ── Call graph elevation ───────────────────────────────────────────────────────
+
+describe('computeVerdict — call graph elevation', () => {
+  const callerFile = '/app/src/routes.ts'
+  const epFile = '/app/src/server.ts'
+
+  function makeCallGraph(overrides: Partial<Parameters<CallGraph['set']>[1][0]> = {}): CallGraph {
+    return new Map([
+      [
+        callerFile,
+        [
+          {
+            callerFile,
+            callerFunction: 'handleRequest',
+            calleePackage: 'lodash',
+            calleeSymbol: 'template',
+            line: 42,
+            dynamic: false,
+            ...overrides,
+          },
+        ],
+      ],
+    ])
+  }
+
+  const fileGraph: FileGraph = new Map([[epFile, [callerFile]]])
+
+  const match: ImportMatchResult = {
+    packageName: 'lodash',
+    matches: [{ file: callerFile, line: 1, kind: 'named', matchedSymbols: ['template'] }],
+    conservative: false,
+    packageSeen: true,
+  }
+
+  it('elevates LOW → CRITICAL when call graph shows unauthenticated entry point reaches call site', () => {
+    const ep = makeEntryPoint({ file: epFile, authenticated: false })
+    const r = computeVerdict(makePkg(), makeCve(), match, {
+      entryPoints: [ep],
+      fileGraph,
+      callGraph: makeCallGraph(),
+    })
+    expect(r.verdict).toBe('CRITICAL')
+  })
+
+  it('elevates LOW → HIGH when call graph shows authenticated entry point reaches call site', () => {
+    const ep = makeEntryPoint({ file: epFile, authenticated: true })
+    const r = computeVerdict(makePkg(), makeCve(), match, {
+      entryPoints: [ep],
+      fileGraph,
+      callGraph: makeCallGraph(),
+    })
+    expect(r.verdict).toBe('HIGH')
+  })
+
+  it('evidence type is call-path (not entry-point) when call graph is used', () => {
+    const ep = makeEntryPoint({ file: epFile, authenticated: false })
+    const r = computeVerdict(makePkg(), makeCve(), match, {
+      entryPoints: [ep],
+      fileGraph,
+      callGraph: makeCallGraph(),
+    })
+    expect(r.evidence.some((e) => e.type === 'call-path')).toBe(true)
+    expect(r.evidence.some((e) => e.type === 'entry-point')).toBe(false)
+  })
+
+  it('call-path evidence includes caller function name and line', () => {
+    const ep = makeEntryPoint({ file: epFile, authenticated: false })
+    const r = computeVerdict(makePkg(), makeCve(), match, {
+      entryPoints: [ep],
+      fileGraph,
+      callGraph: makeCallGraph(),
+    })
+    const cpEvidence = r.evidence.find((e) => e.type === 'call-path')
+    expect(cpEvidence?.description).toMatch(/handleRequest/)
+    expect(cpEvidence?.line).toBe(42)
+  })
+
+  it('stays LOW when call graph has no matching call site for the vulnerable symbol', () => {
+    const callGraph: CallGraph = new Map([
+      [
+        callerFile,
+        [
+          {
+            callerFile,
+            callerFunction: 'handleRequest',
+            calleePackage: 'lodash',
+            calleeSymbol: 'merge', // different symbol — not the CVE-affected one
+            line: 10,
+            dynamic: false,
+          },
+        ],
+      ],
+    ])
+    const ep = makeEntryPoint({ file: epFile, authenticated: false })
+    const r = computeVerdict(makePkg(), makeCve(), match, {
+      entryPoints: [ep],
+      fileGraph,
+      callGraph,
+    })
+    expect(r.verdict).toBe('LOW')
+  })
+
+  it('falls back to import-level when callGraph is undefined', () => {
+    const ep = makeEntryPoint({ file: callerFile, authenticated: false })
+    const r = computeVerdict(makePkg(), makeCve(), match, {
+      entryPoints: [ep],
+      // no callGraph — import-level fallback
+    })
+    // import is in callerFile, entry point IS callerFile → still elevates
+    expect(r.verdict).toBe('CRITICAL')
+    expect(r.evidence.some((e) => e.type === 'entry-point')).toBe(true)
   })
 })

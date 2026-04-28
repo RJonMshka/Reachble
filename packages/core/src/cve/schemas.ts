@@ -65,10 +65,11 @@ export const OsvVulnerabilitySchema = z.object({
   summary: z.string().optional(),
   details: z.string().optional(),
   severity: z.array(OsvSeveritySchema).optional(),
-  affected: z.array(OsvAffectedSchema),
+  // Real API sometimes omits affected/published on withdrawn or partial entries
+  affected: z.array(OsvAffectedSchema).default([]),
   references: z.array(OsvReferenceSchema).optional(),
-  published: z.string(),
-  modified: z.string(),
+  published: z.string().default(''),
+  modified: z.string().optional(),
   database_specific: z
     .object({
       severity: z.string().optional(),

@@ -84,7 +84,7 @@ describe('resolveCves', () => {
     expect(record?.severity).toBe('HIGH')
     expect(record?.affectedVersionRange).toBe('<4.17.21')
     expect(record?.affectedSymbols).toHaveLength(1)
-    expect(record?.affectedSymbols[0]?.name).toBe('_.template')
+    expect(record?.affectedSymbols[0]?.name).toBe('template')
     expect(record?.fixCommitUrls.length).toBeGreaterThan(0)
     expect(record?.publishedAt).toBeInstanceOf(Date)
   })

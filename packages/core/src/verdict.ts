@@ -48,7 +48,8 @@ function symbolConfidenceToOverall(
 }
 
 function assessImportMatch(matchResult: ImportMatchResult, cve: CveRecord): BaseAssessment {
-  if (matchResult.matches.length === 0) {
+  // Package completely absent from the codebase
+  if (!matchResult.packageSeen) {
     return {
       verdict: 'SAFE',
       confidence: 'high',
@@ -62,6 +63,7 @@ function assessImportMatch(matchResult: ImportMatchResult, cve: CveRecord): Base
     }
   }
 
+  // Package imported but no specific vulnerable symbols known — package-level only
   if (cve.affectedSymbols.length === 0) {
     const evidence: Evidence[] = matchResult.matches.map((m) => ({
       type: 'import' as const,
@@ -74,10 +76,20 @@ function assessImportMatch(matchResult: ImportMatchResult, cve: CveRecord): Base
       verdict: 'LOW',
       confidence: 'low',
       reason: `${matchResult.packageName} imported but no specific vulnerable symbol identified`,
-      evidence,
+      evidence:
+        evidence.length > 0
+          ? evidence
+          : [
+              {
+                type: 'import' as const,
+                description: `${matchResult.packageName} is imported`,
+                caveat: 'no specific vulnerable symbol identified — package-level assessment only',
+              },
+            ],
     }
   }
 
+  // Conservative import (namespace / default / dynamic require) — can't rule out the symbol
   if (matchResult.conservative) {
     const evidence: Evidence[] = matchResult.matches.map((m) => ({
       type: 'import' as const,
@@ -95,6 +107,7 @@ function assessImportMatch(matchResult: ImportMatchResult, cve: CveRecord): Base
     }
   }
 
+  // Named imports present — check for exact symbol match
   const exactMatches = matchResult.matches.filter((m) => m.matchedSymbols.length > 0)
 
   if (exactMatches.length > 0) {
@@ -115,7 +128,7 @@ function assessImportMatch(matchResult: ImportMatchResult, cve: CveRecord): Base
     }
   }
 
-  // Package imported with named imports, none match the affected symbols → SAFE
+  // Package imported with named imports, none match the affected symbols
   return {
     verdict: 'SAFE',
     confidence: 'high',

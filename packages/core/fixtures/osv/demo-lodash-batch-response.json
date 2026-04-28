@@ -1,0 +1,80 @@
+{
+  "results": [
+    {
+      "vulns": [
+        {
+          "id": "GHSA-35jh-r3h4-6jhm",
+          "aliases": ["CVE-2021-23337"],
+          "summary": "Command Injection in lodash",
+          "details": "Lodash versions prior to 4.17.21 are vulnerable to Command Injection via the template function.",
+          "modified": "2023-11-06T18:32:15Z",
+          "published": "2021-05-04T00:00:00Z",
+          "affected": [
+            {
+              "package": { "name": "lodash", "ecosystem": "npm", "purl": "pkg:npm/lodash" },
+              "ranges": [
+                {
+                  "type": "SEMVER",
+                  "events": [
+                    { "introduced": "0" },
+                    { "fixed": "4.17.21" }
+                  ]
+                }
+              ],
+              "ecosystem_specific": {
+                "affected_functions": ["_.template"]
+              },
+              "database_specific": {
+                "severity": "HIGH"
+              }
+            }
+          ],
+          "references": [
+            { "type": "FIX", "url": "https://github.com/lodash/lodash/commit/3469357cff369ca03d9" },
+            { "type": "ADVISORY", "url": "https://github.com/advisories/GHSA-35jh-r3h4-6jhm" }
+          ],
+          "database_specific": {
+            "severity": "HIGH",
+            "cwe_ids": ["CWE-78"]
+          }
+        },
+        {
+          "id": "GHSA-29mw-wpgm-hmr9",
+          "aliases": ["CVE-2020-28500"],
+          "summary": "Regular Expression Denial of Service (ReDoS) in lodash",
+          "details": "Lodash versions prior to 4.17.21 are vulnerable to ReDoS. The `trim`, `trimStart`, and `trimEnd` methods contain a vulnerable regex.",
+          "modified": "2023-11-06T18:29:25Z",
+          "published": "2021-02-15T00:00:00Z",
+          "affected": [
+            {
+              "package": { "name": "lodash", "ecosystem": "npm", "purl": "pkg:npm/lodash" },
+              "ranges": [
+                {
+                  "type": "SEMVER",
+                  "events": [
+                    { "introduced": "0" },
+                    { "fixed": "4.17.21" }
+                  ]
+                }
+              ],
+              "database_specific": {
+                "severity": "MEDIUM"
+              }
+            }
+          ],
+          "references": [
+            { "type": "FIX", "url": "https://github.com/lodash/lodash/commit/c4f6f77" },
+            { "type": "ADVISORY", "url": "https://github.com/advisories/GHSA-29mw-wpgm-hmr9" }
+          ],
+          "database_specific": {
+            "severity": "MEDIUM",
+            "cwe_ids": ["CWE-400"]
+          }
+        }
+      ]
+    },
+    {
+      "vulns": []
+    }
+  ]
+}

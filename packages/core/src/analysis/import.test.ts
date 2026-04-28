@@ -292,6 +292,7 @@ describe('matchImports', () => {
     const result = matchImports(graph, 'lodash', affected)
     expect(result.matches).toHaveLength(0)
     expect(result.conservative).toBe(false)
+    expect(result.packageSeen).toBe(false)
   })
 
   it('matches named symbol against affected list', () => {
@@ -302,6 +303,7 @@ describe('matchImports', () => {
     expect(result.matches).toHaveLength(1)
     expect(result.matches[0]?.matchedSymbols).toContain('template')
     expect(result.conservative).toBe(false)
+    expect(result.packageSeen).toBe(true)
   })
 
   it('does not match named symbol absent from affected list', () => {
@@ -311,6 +313,7 @@ describe('matchImports', () => {
     const result = matchImports(graph, 'lodash', affected)
     expect(result.matches).toHaveLength(0)
     expect(result.conservative).toBe(false)
+    expect(result.packageSeen).toBe(true)
   })
 
   it('sets conservative=true for namespace import', () => {
@@ -395,5 +398,6 @@ describe('matchImports', () => {
     const graph: ImportGraph = new Map()
     const result = matchImports(graph, 'lodash', affected)
     expect(result.packageName).toBe('lodash')
+    expect(result.packageSeen).toBe(false)
   })
 })

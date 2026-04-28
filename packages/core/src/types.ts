@@ -118,4 +118,10 @@ export interface ImportMatchResult {
    * meaning we cannot rule out the vulnerable symbol being used.
    */
   conservative: boolean
+  /**
+   * True when the package appears in at least one import statement,
+   * even if no affected symbol matched. Distinguishes "not imported at all"
+   * from "imported but vulnerable symbols not used".
+   */
+  packageSeen: boolean
 }

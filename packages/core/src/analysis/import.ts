@@ -370,10 +370,12 @@ export function matchImports(
   const affectedNames = new Set(affectedSymbols.map((s) => s.name))
   const matches: FileImportMatch[] = []
   let conservative = false
+  let packageSeen = false
 
   for (const [file, records] of graph) {
     for (const record of records) {
       if (record.package !== packageName) continue
+      packageSeen = true
 
       if (record.symbols.length === 0) {
         conservative = true
@@ -401,5 +403,5 @@ export function matchImports(
     }
   }
 
-  return { packageName, matches, conservative }
+  return { packageName, matches, conservative, packageSeen }
 }

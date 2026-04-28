@@ -24,11 +24,21 @@ describe('extractSymbols', () => {
     const symbols = extractSymbols(vuln)
     expect(symbols).toHaveLength(1)
     expect(symbols[0]).toMatchObject({
-      name: '_.template',
-      type: 'method',
+      name: 'template',
+      type: 'function',
       confidence: 'high',
       source: 'osv',
     })
+  })
+
+  it('strips lodash _.prefix so names match ES named imports', () => {
+    const response = loadFixture('batch-response.json')
+    const vuln = response.results[0]?.vulns?.[0]
+    if (!vuln) return
+    const symbols = extractSymbols(vuln)
+    // OSV stores "_.template"; after normalization it should be "template"
+    // so that `import { template } from 'lodash'` matches correctly
+    expect(symbols[0]?.name).toBe('template')
   })
 
   it('falls back to description extraction when no affected_functions', () => {

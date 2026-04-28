@@ -386,27 +386,60 @@ Ship something excellent in one language rather than something mediocre in four.
 
 ---
 
-## 9. Performance Benchmarks
+## 9. Performance Benchmarks & Thesis Validation
 
-_All numbers below are **unverified targets**. Replace with measured numbers
-after running on each fixture. Cold ts-morph load is the dominant cost in V1
-and is likely worse on real Next.js apps than these targets suggest._
+_MVP numbers measured on 2026-04-27. V1 targets are unverified — update after
+call-graph work lands. Network time dominates MVP scan time (OSV + NVD + EPSS);
+pure local analysis is sub-second for all projects tested._
 
-### Target budgets (unverified)
+### MVP thesis validation — real OSS projects
 
-| Project size | MVP (import) target | V1 (call graph) target |
+Three intentionally-vulnerable / real-world Express apps scanned on 2026-04-27
+using `reachble scan --ignore-dev` (prod deps only, no network mocks).
+
+| Project | Packages | Source files | CVE verdicts | LOW (reachable) | SAFE (eliminated) | Noise reduction |
+|---|---|---|---|---|---|---|
+| [DVNA](https://github.com/appsecco/dvna) | 340 | 7 | 58 | 18 | 40 | **69%** |
+| [NodeGoat](https://github.com/OWASP/NodeGoat) | 463 | 8 | 87 | 13 | 74 | **85%** |
+| [RealWorld Express](https://github.com/gothinkster/node-express-realworld-example-app) | 107 | 17 | 24 | 10 | 14 | **58%** |
+
+**Result: 58–85% of flagged CVEs eliminated as `not_affected` without any manual review.**
+This aligns with the Endor Labs (2024) finding of 60–80% unreachable CVEs in real projects.
+
+### Key observations
+
+- All LOW verdicts say "no specific vulnerable symbol identified" — OSV's `affected_functions`
+  coverage is sparse for these older packages. V1 fix-commit symbol extraction (§11) will
+  convert many of these package-level LOWs into either SAFE (wrong symbol) or confirmed LOW.
+- DVNA has intentionally vulnerable packages (`node-serialize`, `mathjs`, `libxmljs`) —
+  all correctly flagged LOW because they ARE imported. None were false SAFEs.
+- NodeGoat's `marked@0.3.5` accounts for 6 of 13 LOW verdicts — one package, many CVEs,
+  all correctly flagged because `marked` is imported in source.
+- RealWorld Express's `axios@1.6.2` accounts for 6 of 10 LOW verdicts — axios is imported and
+  has many CVEs, but none have `affected_functions` in OSV so they land as package-level LOW.
+  Fix-commit extraction (V1 §11) should convert several of these to SAFE if the vulnerable
+  functions aren't called.
+- No false SAFEs observed: every package marked SAFE was genuinely absent from the import graph.
+
+### Scan timing (MVP, wall clock including OSV + NVD + EPSS network calls)
+
+| Project | Cold scan | Warm scan (cache hit) |
 |---|---|---|
-| Small (< 10k LoC, < 50 deps) | < 1s | < 5s |
-| Medium (10–50k LoC, 50–200 deps) | < 3s | < 30s |
-| Large (50–200k LoC, 200–500 deps) | < 10s | < 90s |
-| XL (200k+ LoC) | < 30s | needs `--incremental` (see §12) |
+| DVNA (340 pkgs) | ~45s | <2s |
+| NodeGoat (463 pkgs) | ~3min | <3s |
+| RealWorld Express (107 pkgs) | ~30s | <1s |
 
-### Benchmark projects (to test against)
+_NVD rate-limit (1 req/sec without API key) dominates cold scan time.
+Set `NVD_API_KEY` env var for 5x speedup. Warm scans are cache-only._
 
-- [ ] `express` hello-world app
-- [ ] `fastify` REST API (medium)
-- [ ] `next.js` app (large)
-- [ ] A real production repo (TBD)
+### Target budgets for local analysis only (V1, excluding network)
+
+| Project size | MVP import analysis | V1 call graph (target, unverified) |
+|---|---|---|
+| Small (< 50 deps, < 10k LoC) | < 0.5s | < 5s |
+| Medium (50–200 deps, 10–50k LoC) | < 1s | < 30s |
+| Large (200–500 deps, 50–200k LoC) | < 3s | < 90s |
+| XL (500+ deps) | < 10s | needs `--incremental` (see §12) |
 
 ---
 

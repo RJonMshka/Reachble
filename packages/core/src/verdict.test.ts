@@ -35,7 +35,7 @@ function makeCve(overrides: Partial<CveRecord> = {}): CveRecord {
 }
 
 function noImports(packageName = 'lodash'): ImportMatchResult {
-  return { packageName, matches: [], conservative: false }
+  return { packageName, matches: [], conservative: false, packageSeen: false }
 }
 
 function conservativeMatch(packageName = 'lodash'): ImportMatchResult {
@@ -51,6 +51,7 @@ function conservativeMatch(packageName = 'lodash'): ImportMatchResult {
       },
     ],
     conservative: true,
+    packageSeen: true,
   }
 }
 
@@ -66,6 +67,7 @@ function exactMatch(symbols = ['template'], packageName = 'lodash'): ImportMatch
       },
     ],
     conservative: false,
+    packageSeen: true,
   }
 }
 
@@ -86,6 +88,7 @@ describe('computeVerdict — SAFE: named imports but wrong symbol', () => {
       packageName: 'lodash',
       matches: [{ file: '/app/src/a.ts', line: 1, kind: 'named', matchedSymbols: [] }],
       conservative: false,
+      packageSeen: true,
     }
     const r = computeVerdict(makePkg(), makeCve(), match)
     expect(r.verdict).toBe('SAFE')
@@ -133,6 +136,7 @@ describe('computeVerdict — LOW: package imported, no symbol data', () => {
       packageName: 'lodash',
       matches: [{ file: '/app/src/a.ts', line: 1, kind: 'named', matchedSymbols: [] }],
       conservative: false,
+      packageSeen: true,
     }
     const r = computeVerdict(makePkg(), cve, match)
     expect(r.verdict).toBe('LOW')

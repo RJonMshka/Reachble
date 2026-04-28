@@ -11,8 +11,15 @@ function symbolTypeFromName(name: string): AffectedSymbol['type'] {
 }
 
 function cleanSymbolName(raw: string): string {
-  // Strip trailing "()" and leading module prefixes like "_.template" → keep as-is
-  return raw.replace(/\(\s*\)$/, '').trim()
+  return (
+    raw
+      .replace(/\(\s*\)$/, '') // strip trailing ()
+      // Strip single-char module alias prefix (e.g. lodash `_.foo` → `foo`).
+      // Only strip when prefix is a single non-uppercase char or `_`, so class
+      // method names like `Foo.bar` are left intact.
+      .replace(/^[a-z_$]\./, '')
+      .trim()
+  )
 }
 
 function fromOsvAffected(affected: OsvAffected[]): AffectedSymbol[] {

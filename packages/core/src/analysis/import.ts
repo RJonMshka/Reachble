@@ -82,7 +82,7 @@ export function extractPackageName(source: string): string | null {
   return bare || null
 }
 
-function discoverFiles(dir: string, opts: AnalyzeOptions): string[] {
+export function discoverFiles(dir: string, opts: AnalyzeOptions): string[] {
   const exts = new Set(opts.extensions ?? ['.ts', '.tsx', '.js', '.mjs', '.cjs'])
   const ig = ignore()
   const gitignorePath = join(dir, '.gitignore')

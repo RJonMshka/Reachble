@@ -1,0 +1,82 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://reachble.dev/vex/5525f31aebdde6134e897de175d3927741f8c8a68f6e55ee90a45bbab76b1d54",
+  "author": "Reachble",
+  "timestamp": "2026-04-26T00:00:00.000Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": {
+        "@id": "https://www.cve.org/CVERecord?id=CVE-2021-23369",
+        "name": "CVE-2021-23369"
+      },
+      "products": [
+        {
+          "@id": "pkg:npm/handlebars@4.7.6"
+        }
+      ],
+      "status": "not_affected",
+      "impact_statement": "handlebars is not imported in any analyzed file. Package handlebars not found in import graph",
+      "timestamp": "2026-04-26T00:00:00.000Z",
+      "justification": "vulnerable_code_not_present"
+    },
+    {
+      "vulnerability": {
+        "@id": "https://www.cve.org/CVERecord?id=CVE-2021-23370",
+        "name": "CVE-2021-23370"
+      },
+      "products": [
+        {
+          "@id": "pkg:npm/handlebars@4.7.6"
+        }
+      ],
+      "status": "not_affected",
+      "impact_statement": "Vulnerable symbol(s) not imported from handlebars. handlebars imported but none of the vulnerable symbols (compile) appear in any import statement",
+      "timestamp": "2026-04-26T00:00:00.000Z",
+      "justification": "vulnerable_code_not_in_execute_path"
+    },
+    {
+      "vulnerability": {
+        "@id": "https://www.cve.org/CVERecord?id=CVE-2020-28500",
+        "name": "CVE-2020-28500"
+      },
+      "products": [
+        {
+          "@id": "pkg:npm/lodash@4.17.20"
+        }
+      ],
+      "status": "not_affected",
+      "impact_statement": "Suppressed by .reachble.json: template() never called — reviewed 2026-04-25. User suppression: template() never called — reviewed 2026-04-25 (reviewed by rajat)",
+      "timestamp": "2026-04-26T00:00:00.000Z",
+      "justification": "inline_mitigations_already_exist"
+    },
+    {
+      "vulnerability": {
+        "@id": "https://www.cve.org/CVERecord?id=CVE-2021-23337",
+        "name": "CVE-2021-23337"
+      },
+      "products": [
+        {
+          "@id": "pkg:npm/lodash@4.17.20"
+        }
+      ],
+      "status": "affected",
+      "impact_statement": "Vulnerable symbol(s) imported from lodash. Vulnerable symbol(s) template imported from lodash at src/utils.ts:5 (import-level analysis only — V1 call graph will refine reachability)",
+      "timestamp": "2026-04-26T00:00:00.000Z"
+    },
+    {
+      "vulnerability": {
+        "@id": "https://www.cve.org/CVERecord?id=CVE-2022-31129",
+        "name": "CVE-2022-31129"
+      },
+      "products": [
+        {
+          "@id": "pkg:npm/moment@2.29.3"
+        }
+      ],
+      "status": "affected",
+      "impact_statement": "Vulnerable symbol(s) imported from moment. Vulnerable symbol(s) parseZone imported from moment at src/api/dates.ts:3 (import-level analysis only — V1 call graph will refine reachability)",
+      "timestamp": "2026-04-26T00:00:00.000Z"
+    }
+  ]
+}

@@ -1,0 +1,215 @@
+{
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Reachble",
+          "version": "0.1.0",
+          "informationUri": "https://github.com/reachble/reachble",
+          "rules": [
+            {
+              "id": "CVE-2021-23369",
+              "name": "CVE_2021_23369",
+              "shortDescription": {
+                "text": "CVE-2021-23369 affects handlebars"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "supply-chain"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2021-23370",
+              "name": "CVE_2021_23370",
+              "shortDescription": {
+                "text": "CVE-2021-23370 affects handlebars"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "supply-chain"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2020-28500",
+              "name": "CVE_2020_28500",
+              "shortDescription": {
+                "text": "CVE-2020-28500 affects lodash"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "supply-chain"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2021-23337",
+              "name": "CVE_2021_23337",
+              "shortDescription": {
+                "text": "CVE-2021-23337 affects lodash"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "supply-chain"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2022-31129",
+              "name": "CVE_2022_31129",
+              "shortDescription": {
+                "text": "CVE-2022-31129 affects moment"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "supply-chain"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "CVE-2021-23369",
+          "level": "none",
+          "message": {
+            "text": "handlebars is not imported in any analyzed file. Package handlebars not found in import graph"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".",
+                  "uriBaseId": "%SRCROOT%"
+                }
+              }
+            }
+          ],
+          "properties": {
+            "verdict": "SAFE",
+            "confidence": "high",
+            "epssScore": 0.01,
+            "cvssScore": 9.8,
+            "package": "handlebars",
+            "version": "4.7.6"
+          }
+        },
+        {
+          "ruleId": "CVE-2021-23370",
+          "level": "none",
+          "message": {
+            "text": "Vulnerable symbol(s) not imported from handlebars. handlebars imported but none of the vulnerable symbols (compile) appear in any import statement"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".",
+                  "uriBaseId": "%SRCROOT%"
+                }
+              }
+            }
+          ],
+          "properties": {
+            "verdict": "SAFE",
+            "confidence": "high",
+            "epssScore": 0.01,
+            "cvssScore": 7.5,
+            "package": "handlebars",
+            "version": "4.7.6"
+          }
+        },
+        {
+          "ruleId": "CVE-2020-28500",
+          "level": "none",
+          "message": {
+            "text": "Suppressed by .reachble.json: template() never called — reviewed 2026-04-25. User suppression: template() never called — reviewed 2026-04-25 (reviewed by rajat)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".",
+                  "uriBaseId": "%SRCROOT%"
+                }
+              }
+            }
+          ],
+          "properties": {
+            "verdict": "SAFE",
+            "confidence": "high",
+            "epssScore": 0.05,
+            "cvssScore": 7.5,
+            "package": "lodash",
+            "version": "4.17.20"
+          }
+        },
+        {
+          "ruleId": "CVE-2021-23337",
+          "level": "note",
+          "message": {
+            "text": "Vulnerable symbol(s) imported from lodash. Vulnerable symbol(s) template imported from lodash at src/utils.ts:5 (import-level analysis only — V1 call graph will refine reachability)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/utils.ts",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "properties": {
+            "verdict": "LOW",
+            "confidence": "medium",
+            "epssScore": 0.15,
+            "cvssScore": 7.2,
+            "package": "lodash",
+            "version": "4.17.20"
+          }
+        },
+        {
+          "ruleId": "CVE-2022-31129",
+          "level": "warning",
+          "message": {
+            "text": "Vulnerable symbol(s) imported from moment. Vulnerable symbol(s) parseZone imported from moment at src/api/dates.ts:3 (import-level analysis only — V1 call graph will refine reachability)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/api/dates.ts",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 3
+                }
+              }
+            }
+          ],
+          "properties": {
+            "verdict": "HIGH",
+            "confidence": "medium",
+            "epssScore": 0.65,
+            "cvssScore": 7.5,
+            "package": "moment",
+            "version": "2.29.3"
+          }
+        }
+      ]
+    }
+  ]
+}

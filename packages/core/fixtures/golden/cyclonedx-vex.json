@@ -1,0 +1,171 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:5525f31a-ebdd-e613-4e89-7de175d39277",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-04-26T00:00:00.000Z",
+    "tools": [
+      {
+        "vendor": "Reachble",
+        "name": "reachble",
+        "version": "0.1.0"
+      }
+    ],
+    "component": {
+      "type": "application",
+      "name": "my-app",
+      "version": "1.0.0"
+    }
+  },
+  "vulnerabilities": [
+    {
+      "id": "CVE-2021-23369",
+      "source": {
+        "name": "NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2021-23369"
+      },
+      "analysis": {
+        "state": "not_affected",
+        "detail": "handlebars is not imported in any analyzed file. Package handlebars not found in import graph",
+        "justification": "code_not_present"
+      },
+      "affects": [
+        {
+          "ref": "pkg:npm/handlebars@4.7.6",
+          "versions": [
+            {
+              "version": "4.7.6",
+              "status": "unaffected"
+            }
+          ]
+        }
+      ],
+      "ratings": [
+        {
+          "score": 9.8,
+          "severity": "critical",
+          "method": "CVSSv31"
+        }
+      ]
+    },
+    {
+      "id": "CVE-2021-23370",
+      "source": {
+        "name": "NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2021-23370"
+      },
+      "analysis": {
+        "state": "not_affected",
+        "detail": "Vulnerable symbol(s) not imported from handlebars. handlebars imported but none of the vulnerable symbols (compile) appear in any import statement",
+        "justification": "code_not_reachable"
+      },
+      "affects": [
+        {
+          "ref": "pkg:npm/handlebars@4.7.6",
+          "versions": [
+            {
+              "version": "4.7.6",
+              "status": "unaffected"
+            }
+          ]
+        }
+      ],
+      "ratings": [
+        {
+          "score": 7.5,
+          "severity": "high",
+          "method": "CVSSv31"
+        }
+      ]
+    },
+    {
+      "id": "CVE-2020-28500",
+      "source": {
+        "name": "NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2020-28500"
+      },
+      "analysis": {
+        "state": "not_affected",
+        "detail": "Suppressed by .reachble.json: template() never called — reviewed 2026-04-25. User suppression: template() never called — reviewed 2026-04-25 (reviewed by rajat)",
+        "justification": "protected_by_mitigations"
+      },
+      "affects": [
+        {
+          "ref": "pkg:npm/lodash@4.17.20",
+          "versions": [
+            {
+              "version": "4.17.20",
+              "status": "unaffected"
+            }
+          ]
+        }
+      ],
+      "ratings": [
+        {
+          "score": 7.5,
+          "severity": "high",
+          "method": "CVSSv31"
+        }
+      ]
+    },
+    {
+      "id": "CVE-2021-23337",
+      "source": {
+        "name": "NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2021-23337"
+      },
+      "analysis": {
+        "state": "exploitable",
+        "detail": "Vulnerable symbol(s) imported from lodash. Vulnerable symbol(s) template imported from lodash at src/utils.ts:5 (import-level analysis only — V1 call graph will refine reachability)"
+      },
+      "affects": [
+        {
+          "ref": "pkg:npm/lodash@4.17.20",
+          "versions": [
+            {
+              "version": "4.17.20",
+              "status": "affected"
+            }
+          ]
+        }
+      ],
+      "ratings": [
+        {
+          "score": 7.2,
+          "severity": "high",
+          "method": "CVSSv31"
+        }
+      ]
+    },
+    {
+      "id": "CVE-2022-31129",
+      "source": {
+        "name": "NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2022-31129"
+      },
+      "analysis": {
+        "state": "exploitable",
+        "detail": "Vulnerable symbol(s) imported from moment. Vulnerable symbol(s) parseZone imported from moment at src/api/dates.ts:3 (import-level analysis only — V1 call graph will refine reachability)"
+      },
+      "affects": [
+        {
+          "ref": "pkg:npm/moment@2.29.3",
+          "versions": [
+            {
+              "version": "2.29.3",
+              "status": "affected"
+            }
+          ]
+        }
+      ],
+      "ratings": [
+        {
+          "score": 7.5,
+          "severity": "high",
+          "method": "CVSSv31"
+        }
+      ]
+    }
+  ]
+}

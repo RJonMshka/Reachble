@@ -1,0 +1,109 @@
+{
+  "$schema": "https://reachble.dev/schema/v1/results.json",
+  "version": "v1",
+  "generatedAt": "2026-04-26T00:00:00.000Z",
+  "tool": {
+    "name": "reachble",
+    "version": "0.1.0"
+  },
+  "project": {
+    "name": "my-app",
+    "version": "1.0.0"
+  },
+  "summary": {
+    "total": 5,
+    "critical": 0,
+    "high": 1,
+    "low": 1,
+    "safe": 3
+  },
+  "verdicts": [
+    {
+      "cveId": "CVE-2021-23369",
+      "package": "handlebars",
+      "version": "4.7.6",
+      "verdict": "SAFE",
+      "confidence": "high",
+      "reason": "handlebars is not imported in any analyzed file",
+      "evidence": [
+        {
+          "type": "import",
+          "description": "Package handlebars not found in import graph"
+        }
+      ],
+      "epssScore": 0.01,
+      "cvssScore": 9.8,
+      "fixedIn": "4.7.7"
+    },
+    {
+      "cveId": "CVE-2021-23370",
+      "package": "handlebars",
+      "version": "4.7.6",
+      "verdict": "SAFE",
+      "confidence": "high",
+      "reason": "Vulnerable symbol(s) not imported from handlebars",
+      "evidence": [
+        {
+          "type": "import",
+          "description": "handlebars imported but none of the vulnerable symbols (compile) appear in any import statement"
+        }
+      ],
+      "epssScore": 0.01,
+      "cvssScore": 7.5
+    },
+    {
+      "cveId": "CVE-2020-28500",
+      "package": "lodash",
+      "version": "4.17.20",
+      "verdict": "SAFE",
+      "confidence": "high",
+      "reason": "Suppressed by .reachble.json: template() never called — reviewed 2026-04-25",
+      "evidence": [
+        {
+          "type": "suppression",
+          "description": "User suppression: template() never called — reviewed 2026-04-25 (reviewed by rajat)"
+        }
+      ],
+      "epssScore": 0.05,
+      "cvssScore": 7.5
+    },
+    {
+      "cveId": "CVE-2021-23337",
+      "package": "lodash",
+      "version": "4.17.20",
+      "verdict": "LOW",
+      "confidence": "medium",
+      "reason": "Vulnerable symbol(s) imported from lodash",
+      "evidence": [
+        {
+          "type": "import",
+          "description": "Vulnerable symbol(s) template imported from lodash at src/utils.ts:5",
+          "file": "src/utils.ts",
+          "line": 5,
+          "caveat": "import-level analysis only — V1 call graph will refine reachability"
+        }
+      ],
+      "epssScore": 0.15,
+      "cvssScore": 7.2
+    },
+    {
+      "cveId": "CVE-2022-31129",
+      "package": "moment",
+      "version": "2.29.3",
+      "verdict": "HIGH",
+      "confidence": "medium",
+      "reason": "Vulnerable symbol(s) imported from moment",
+      "evidence": [
+        {
+          "type": "import",
+          "description": "Vulnerable symbol(s) parseZone imported from moment at src/api/dates.ts:3",
+          "file": "src/api/dates.ts",
+          "line": 3,
+          "caveat": "import-level analysis only — V1 call graph will refine reachability"
+        }
+      ],
+      "epssScore": 0.65,
+      "cvssScore": 7.5
+    }
+  ]
+}

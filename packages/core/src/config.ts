@@ -10,11 +10,18 @@ const SuppressionSchema = z.object({
   reviewedBy: z.string().optional(),
 })
 
+const FailOnLevelSchema = z.enum(['critical', 'high', 'medium'])
+
 const ReachbleConfigSchema = z.object({
+  entryPoints: z.array(z.string().min(1)).optional(),
+  ignorePatterns: z.array(z.string().min(1)).optional(),
+  ignoreDev: z.boolean().optional(),
+  failOn: FailOnLevelSchema.optional(),
   suppressions: z.array(SuppressionSchema).optional(),
 })
 
 export type Suppression = z.infer<typeof SuppressionSchema>
+export type FailOnLevel = z.infer<typeof FailOnLevelSchema>
 export type ReachbleConfig = z.infer<typeof ReachbleConfigSchema>
 
 export function loadConfig(dir: string): ReachbleConfig {

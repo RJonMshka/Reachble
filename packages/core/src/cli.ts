@@ -6,6 +6,7 @@ import chalk from 'chalk'
 import { Command } from 'commander'
 import ora from 'ora'
 import { buildImportGraph } from './analysis/import.js'
+import type { FailOnLevel } from './config.js'
 import { loadConfig } from './config.js'
 import { resolveCves } from './cve/resolver.js'
 import { detectAndParse } from './lockfile/detect.js'
@@ -40,8 +41,6 @@ function readProjectMeta(dir: string): { name: string; version?: string } {
     return { name: dir }
   }
 }
-
-type FailOnLevel = 'critical' | 'high' | 'medium'
 
 function shouldFail(results: VerdictResult[], level: FailOnLevel): boolean {
   for (const r of results) {
@@ -132,15 +131,22 @@ async function runScan(opts: ScanOptions): Promise<void> {
   const config = loadConfig(projectDir)
   const meta = readProjectMeta(projectDir)
 
+  // CLI flags override config; config provides defaults
+  const effectiveIgnoreDev = opts.ignoreDev || (config.ignoreDev ?? false)
+  const effectiveFailOn: FailOnLevel | undefined = opts.failOn ?? config.failOn
+  const effectiveIgnorePatterns = config.ignorePatterns ?? []
+
   // ── Lockfile ──────────────────────────────────────────────────────────────
   const lockSpinner = ora('Parsing lockfile…').start()
   let packages = await detectAndParse(projectDir)
-  if (opts.ignoreDev) packages = packages.filter((p) => !p.devOnly)
+  if (effectiveIgnoreDev) packages = packages.filter((p) => !p.devOnly)
   lockSpinner.succeed(`Found ${String(packages.length)} packages`)
 
   // ── Import graph ──────────────────────────────────────────────────────────
   const graphSpinner = ora('Analyzing imports…').start()
-  const graph = buildImportGraph(projectDir)
+  const graph = buildImportGraph(projectDir, {
+    ...(effectiveIgnorePatterns.length > 0 ? { ignorePatterns: effectiveIgnorePatterns } : {}),
+  })
   const fileCount = graph.size
   graphSpinner.succeed(`Analyzed ${String(fileCount)} file${fileCount !== 1 ? 's' : ''}`)
 
@@ -195,7 +201,7 @@ async function runScan(opts: ScanOptions): Promise<void> {
   printSummary(packages.length, totalCves, results, outPath)
 
   // ── CI exit code ──────────────────────────────────────────────────────────
-  if (opts.failOn !== undefined && shouldFail(results, opts.failOn)) {
+  if (effectiveFailOn !== undefined && shouldFail(results, effectiveFailOn)) {
     process.exit(1)
   }
 }

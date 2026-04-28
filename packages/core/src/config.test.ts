@@ -102,4 +102,55 @@ describe('loadConfig', () => {
     writeFileSync(join(TMP, 'package.json'), '{bad}')
     expect(loadConfig(TMP)).toEqual({})
   })
+
+  it('loads entryPoints and ignorePatterns from .reachble.json', () => {
+    writeFileSync(
+      join(TMP, '.reachble.json'),
+      JSON.stringify({
+        entryPoints: ['src/server.ts', 'src/worker.ts'],
+        ignorePatterns: ['**/*.test.ts', '**/fixtures/**'],
+      }),
+    )
+    const config = loadConfig(TMP)
+    expect(config.entryPoints).toEqual(['src/server.ts', 'src/worker.ts'])
+    expect(config.ignorePatterns).toEqual(['**/*.test.ts', '**/fixtures/**'])
+  })
+
+  it('loads ignoreDev and failOn from .reachble.json', () => {
+    writeFileSync(join(TMP, '.reachble.json'), JSON.stringify({ ignoreDev: true, failOn: 'high' }))
+    const config = loadConfig(TMP)
+    expect(config.ignoreDev).toBe(true)
+    expect(config.failOn).toBe('high')
+  })
+
+  it('throws ConfigError for invalid failOn value', () => {
+    writeFileSync(join(TMP, '.reachble.json'), JSON.stringify({ failOn: 'none' }))
+    expect(() => loadConfig(TMP)).toThrowError(ConfigError)
+  })
+
+  it('throws ConfigError for non-boolean ignoreDev', () => {
+    writeFileSync(join(TMP, '.reachble.json'), JSON.stringify({ ignoreDev: 'yes' }))
+    expect(() => loadConfig(TMP)).toThrowError(ConfigError)
+  })
+
+  it('loads full config with all fields', () => {
+    writeFileSync(
+      join(TMP, '.reachble.json'),
+      JSON.stringify({
+        entryPoints: ['src/server.ts'],
+        ignorePatterns: ['**/*.test.ts'],
+        ignoreDev: false,
+        failOn: 'critical',
+        suppressions: [
+          { cveId: 'CVE-2024-1111', package: 'pkg', reason: 'not reachable', reviewedBy: 'alice' },
+        ],
+      }),
+    )
+    const config = loadConfig(TMP)
+    expect(config.entryPoints).toEqual(['src/server.ts'])
+    expect(config.ignorePatterns).toEqual(['**/*.test.ts'])
+    expect(config.ignoreDev).toBe(false)
+    expect(config.failOn).toBe('critical')
+    expect(config.suppressions).toHaveLength(1)
+  })
 })

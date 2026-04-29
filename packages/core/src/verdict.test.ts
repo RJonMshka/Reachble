@@ -670,3 +670,189 @@ describe('computeVerdict — call graph elevation', () => {
     expect(r.evidence.some((e) => e.type === 'entry-point')).toBe(true)
   })
 })
+
+// ── V1.5: depth limit ─────────────────────────────────────────────────────────
+
+describe('computeVerdict — depth limit', () => {
+  const epFile = '/ep.ts'
+  const aFile = '/a.ts'
+  const bFile = '/b.ts'
+  const cFile = '/c.ts' // vulnerable call site
+  const multiHopGraph: FileGraph = new Map([
+    [epFile, [aFile]],
+    [aFile, [bFile]],
+    [bFile, [cFile]],
+  ])
+  const match: ImportMatchResult = {
+    packageName: 'lodash',
+    matches: [{ file: cFile, line: 1, kind: 'named', matchedSymbols: ['template'] }],
+    conservative: false,
+    packageSeen: true,
+  }
+  const ep = makeEntryPoint({ file: epFile, authenticated: false })
+
+  it('elevates to CRITICAL with default depth limit (3-hop path)', () => {
+    const r = computeVerdict(makePkg(), makeCve(), match, {
+      entryPoints: [ep],
+      fileGraph: multiHopGraph,
+    })
+    expect(r.verdict).toBe('CRITICAL')
+  })
+
+  it('stays LOW when depthLimit is smaller than the required path length', () => {
+    const r = computeVerdict(makePkg(), makeCve(), match, {
+      entryPoints: [ep],
+      fileGraph: multiHopGraph,
+      depthLimit: 1, // path requires 3 hops
+    })
+    expect(r.verdict).toBe('LOW')
+  })
+
+  it('elevates when depthLimit exactly covers the path', () => {
+    const r = computeVerdict(makePkg(), makeCve(), match, {
+      entryPoints: [ep],
+      fileGraph: multiHopGraph,
+      depthLimit: 3,
+    })
+    expect(r.verdict).toBe('CRITICAL')
+  })
+})
+
+// ── V1.5: test-file-only path clamping ────────────────────────────────────────
+
+describe('computeVerdict — test-file-only path clamping', () => {
+  const epFile = '/app/src/server.ts'
+  const testCallerFile = '/app/src/render.test.ts' // .test.ts → test file
+  const fileGraph: FileGraph = new Map([[epFile, [testCallerFile]]])
+
+  const matchInTestFile: ImportMatchResult = {
+    packageName: 'lodash',
+    matches: [{ file: testCallerFile, line: 5, kind: 'named', matchedSymbols: ['template'] }],
+    conservative: false,
+    packageSeen: true,
+  }
+  const ep = makeEntryPoint({ file: epFile, authenticated: false })
+
+  it('clamps to LOW when the only import is in a test file (import-level)', () => {
+    const r = computeVerdict(makePkg(), makeCve(), matchInTestFile, {
+      entryPoints: [ep],
+      fileGraph,
+    })
+    expect(r.verdict).toBe('LOW')
+    expect(r.reason).toMatch(/test files/)
+  })
+
+  it('includes a test-file caveat in evidence', () => {
+    const r = computeVerdict(makePkg(), makeCve(), matchInTestFile, {
+      entryPoints: [ep],
+      fileGraph,
+    })
+    const caveatEvidence = r.evidence.find(
+      (e) => e.caveat !== undefined && e.caveat.includes('test-file'),
+    )
+    expect(caveatEvidence).toBeDefined()
+  })
+
+  it('elevates normally when call site is not in a test file', () => {
+    const prodFile = '/app/src/render.ts'
+    const prodMatch: ImportMatchResult = {
+      packageName: 'lodash',
+      matches: [{ file: prodFile, line: 5, kind: 'named', matchedSymbols: ['template'] }],
+      conservative: false,
+      packageSeen: true,
+    }
+    const fg: FileGraph = new Map([[epFile, [prodFile]]])
+    const r = computeVerdict(makePkg(), makeCve(), prodMatch, {
+      entryPoints: [ep],
+      fileGraph: fg,
+    })
+    expect(r.verdict).toBe('CRITICAL')
+  })
+})
+
+// ── V1.5: dynamic edge confidence degradation ─────────────────────────────────
+
+describe('computeVerdict — dynamic edge confidence degradation', () => {
+  const callerFile = '/app/src/routes.ts'
+  const epFile = '/app/src/server.ts'
+  const fileGraph: FileGraph = new Map([[epFile, [callerFile]]])
+  const ep = makeEntryPoint({ file: epFile, authenticated: false })
+  const match: ImportMatchResult = {
+    packageName: 'lodash',
+    matches: [{ file: callerFile, line: 1, kind: 'named', matchedSymbols: ['template'] }],
+    conservative: false,
+    packageSeen: true,
+  }
+
+  function makeDynamicCallGraph(): CallGraph {
+    return new Map([
+      [
+        callerFile,
+        [
+          {
+            callerFile,
+            callerFunction: 'handleRequest',
+            calleePackage: 'lodash',
+            calleeSymbol: 'template',
+            line: 42,
+            dynamic: true, // dynamic dispatch
+          },
+        ],
+      ],
+    ])
+  }
+
+  it('still elevates verdict (CRITICAL) despite dynamic edge', () => {
+    const r = computeVerdict(makePkg(), makeCve(), match, {
+      entryPoints: [ep],
+      fileGraph,
+      callGraph: makeDynamicCallGraph(),
+    })
+    expect(r.verdict).toBe('CRITICAL')
+  })
+
+  it('degrades confidence to low when path has a dynamic edge', () => {
+    const r = computeVerdict(makePkg(), makeCve(), match, {
+      entryPoints: [ep],
+      fileGraph,
+      callGraph: makeDynamicCallGraph(),
+    })
+    expect(r.confidence).toBe('low')
+  })
+
+  it('adds a dynamic-dispatch caveat in evidence', () => {
+    const r = computeVerdict(makePkg(), makeCve(), match, {
+      entryPoints: [ep],
+      fileGraph,
+      callGraph: makeDynamicCallGraph(),
+    })
+    const dynamicEvidence = r.evidence.find(
+      (e) => e.caveat !== undefined && e.caveat.includes('dynamic'),
+    )
+    expect(dynamicEvidence).toBeDefined()
+  })
+
+  it('confidence stays medium for static call (control)', () => {
+    const staticCallGraph: CallGraph = new Map([
+      [
+        callerFile,
+        [
+          {
+            callerFile,
+            callerFunction: 'handleRequest',
+            calleePackage: 'lodash',
+            calleeSymbol: 'template',
+            line: 42,
+            dynamic: false,
+          },
+        ],
+      ],
+    ])
+    const r = computeVerdict(makePkg(), makeCve(), match, {
+      entryPoints: [ep],
+      fileGraph,
+      callGraph: staticCallGraph,
+    })
+    expect(r.confidence).toBe('medium')
+  })
+})

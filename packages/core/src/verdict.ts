@@ -1,4 +1,5 @@
 import { matchImports } from './analysis/index.js'
+import { bfsPath, findCallPath, isTestFile } from './analysis/reach.js'
 import type { Suppression } from './config.js'
 import type {
   CallEdge,
@@ -33,22 +34,6 @@ function clampToLow(verdict: Verdict): Verdict {
   return verdict === 'CRITICAL' || verdict === 'HIGH' ? 'LOW' : verdict
 }
 
-function transitiveReachable(start: string, fileGraph: FileGraph): Set<string> {
-  const visited = new Set<string>([start])
-  const queue = [start]
-  while (queue.length > 0) {
-    const current = queue.shift()
-    if (current === undefined) break
-    for (const dep of fileGraph.get(current) ?? []) {
-      if (!visited.has(dep)) {
-        visited.add(dep)
-        queue.push(dep)
-      }
-    }
-  }
-  return visited
-}
-
 /** Return call edges in `callGraph` where the callee matches package + any of the symbols. */
 function findCallSites(
   callGraph: CallGraph,
@@ -67,69 +52,113 @@ function findCallSites(
   return sites
 }
 
+interface EpReachResult {
+  verdict: Verdict
+  evidence: Evidence[]
+  /** True when the path to the vulnerable call goes through a dynamic dispatch. */
+  hasDynamicPath: boolean
+  /** True when every call site for the vulnerable symbol lives in a test file. */
+  isTestOnlyPath: boolean
+}
+
+interface AssessEpOpts {
+  fileGraph?: FileGraph
+  callSites?: CallEdge[]
+  depthLimit?: number
+}
+
 function assessEntryPointReachability(
   matchResult: ImportMatchResult,
   entryPoints: EntryPoint[],
-  fileGraph?: FileGraph,
-  callSites?: CallEdge[],
-): { verdict: Verdict; evidence: Evidence[] } | null {
-  // Call graph provided but no matching call site → the symbol is never called; don't elevate.
+  opts: AssessEpOpts,
+): EpReachResult | null {
+  const { fileGraph, callSites, depthLimit = 25 } = opts
+
+  // Call graph provided but no matching call site → symbol never called; don't elevate.
   if (callSites !== undefined && callSites.length === 0) return null
 
-  // If call-graph data is available, use it for precision; fall back to import sites.
-  const hasCallGraph = callSites !== undefined
-  const sourceFiles: Set<string> = hasCallGraph
-    ? new Set(callSites.map((e) => e.callerFile))
-    : new Set(matchResult.matches.map((m) => m.file))
-
-  if (sourceFiles.size === 0) return null
-
-  function epReaches(ep: EntryPoint): boolean {
-    if (sourceFiles.has(ep.file)) return true
-    if (fileGraph === undefined) return false
-    const reachable = transitiveReachable(ep.file, fileGraph)
-    for (const f of sourceFiles) {
-      if (reachable.has(f)) return true
+  // ── Call graph path (precise) ──────────────────────────────────────────────
+  if (callSites !== undefined && fileGraph !== undefined) {
+    type Hit = { ep: EntryPoint; path: import('./analysis/reach.js').ReachPath }
+    const hits: Hit[] = []
+    for (const ep of entryPoints) {
+      const path = findCallPath(ep, callSites, fileGraph, depthLimit)
+      if (path !== null) hits.push({ ep, path })
     }
-    return false
-  }
+    if (hits.length === 0) return null
 
-  const reachable = entryPoints.filter(epReaches)
-  if (reachable.length === 0) return null
+    const unauthed = hits.filter((h) => !h.ep.authenticated)
+    const targetVerdict: Verdict = unauthed.length > 0 ? 'CRITICAL' : 'HIGH'
+    const relevant = unauthed.length > 0 ? unauthed : hits
 
-  const unauthed = reachable.filter((ep) => !ep.authenticated)
-  const targetVerdict: Verdict = unauthed.length > 0 ? 'CRITICAL' : 'HIGH'
-  const relevant = unauthed.length > 0 ? unauthed : reachable
+    const hasDynamicPath = relevant.some((h) => h.path.hasDynamicEdge)
+    const isTestOnlyPath = relevant.every((h) => isTestFile(h.path.callSite.callerFile))
 
-  const evidence: Evidence[] = relevant.map((ep) => {
-    if (hasCallGraph) {
-      // Find the first call site reachable from this entry point
-      const site = callSites.find((e) => {
-        if (e.callerFile === ep.file) return true
-        if (fileGraph === undefined) return false
-        return transitiveReachable(ep.file, fileGraph).has(e.callerFile)
-      })
+    const evidence: Evidence[] = relevant.map(({ ep, path }) => {
+      const { callSite: site, filePath } = path
+      const caveats: string[] = []
+      if (site.dynamic) caveats.push('dynamic call — cannot statically confirm symbol dispatch')
+
+      // Build full call path: entry point → intermediate files → caller→symbol
+      const callPath = [
+        ep.description,
+        ...filePath.slice(1, -1),
+        `${site.callerFunction}() → ${matchResult.packageName}.${site.calleeSymbol}`,
+      ]
+
       return {
         type: 'call-path' as const,
-        description:
-          site !== undefined
-            ? `${site.callerFunction}() in ${ep.description} calls ${matchResult.packageName}.${site.calleeSymbol} at line ${String(site.line)}`
-            : `${matchResult.packageName} called from ${ep.description}`,
-        file: site?.callerFile ?? ep.file,
-        line: site?.line ?? ep.line,
-        ...(site !== undefined ? { callPath: [ep.description, `${site.callerFunction}()`] } : {}),
+        description: `${site.callerFunction}() in ${ep.description} calls ${matchResult.packageName}.${site.calleeSymbol} at line ${String(site.line)}`,
+        file: site.callerFile,
+        line: site.line,
+        callPath,
+        ...(caveats.length > 0 ? { caveat: caveats.join('; ') } : {}),
       }
+    })
+
+    return { verdict: targetVerdict, evidence, hasDynamicPath, isTestOnlyPath }
+  }
+
+  // ── Import-level fallback (no call graph) ──────────────────────────────────
+  const sourceFiles = new Set(matchResult.matches.map((m) => m.file))
+  if (sourceFiles.size === 0) return null
+
+  type ImportHit = { ep: EntryPoint; path: string[] }
+  const importHits: ImportHit[] = []
+
+  for (const ep of entryPoints) {
+    if (sourceFiles.has(ep.file)) {
+      importHits.push({ ep, path: [ep.file] })
+    } else if (fileGraph !== undefined) {
+      const path = bfsPath(ep.file, sourceFiles, fileGraph, depthLimit)
+      if (path !== null) importHits.push({ ep, path })
     }
+  }
+
+  if (importHits.length === 0) return null
+
+  const unauthed = importHits.filter((h) => !h.ep.authenticated)
+  const targetVerdict: Verdict = unauthed.length > 0 ? 'CRITICAL' : 'HIGH'
+  const relevant = unauthed.length > 0 ? unauthed : importHits
+
+  const isTestOnlyPath = relevant.every((h) => {
+    const lastFile = h.path[h.path.length - 1]
+    return lastFile !== undefined && isTestFile(lastFile)
+  })
+
+  const evidence: Evidence[] = relevant.map(({ ep, path }) => {
+    const callPath = path.length > 1 ? path : undefined
     return {
       type: 'entry-point' as const,
       description: `${matchResult.packageName} imported in ${ep.description}`,
       file: ep.file,
       line: ep.line,
+      ...(callPath !== undefined ? { callPath } : {}),
       caveat: 'import-level co-location — call graph not available',
     }
   })
 
-  return { verdict: targetVerdict, evidence }
+  return { verdict: targetVerdict, evidence, hasDynamicPath: false, isTestOnlyPath }
 }
 
 interface BaseAssessment {
@@ -250,6 +279,8 @@ export interface ComputeVerdictOptions {
   entryPoints?: EntryPoint[]
   fileGraph?: FileGraph
   callGraph?: CallGraph
+  /** Maximum BFS depth when tracing call paths. Default: 25. */
+  depthLimit?: number
 }
 
 /**
@@ -263,8 +294,7 @@ export function computeVerdict(
   opts: ComputeVerdictOptions = {},
 ): VerdictResult {
   const assessment = assessImportMatch(matchResult, cve)
-  const { confidence } = assessment
-  let { verdict, reason, evidence } = assessment
+  let { verdict, confidence, reason, evidence } = assessment
 
   // Entry point elevation: LOW → CRITICAL/HIGH when an entry point can reach the call/import site
   if (verdict === 'LOW' && opts.entryPoints !== undefined && opts.entryPoints.length > 0) {
@@ -276,17 +306,43 @@ export function computeVerdict(
             cve.affectedSymbols.map((s) => s.name),
           )
         : undefined
-    const epResult = assessEntryPointReachability(
-      matchResult,
-      opts.entryPoints,
-      opts.fileGraph,
-      callSites,
-    )
+    const epOpts: AssessEpOpts = {}
+    if (opts.fileGraph !== undefined) epOpts.fileGraph = opts.fileGraph
+    if (callSites !== undefined) epOpts.callSites = callSites
+    if (opts.depthLimit !== undefined) epOpts.depthLimit = opts.depthLimit
+    const epResult = assessEntryPointReachability(matchResult, opts.entryPoints, epOpts)
     if (epResult !== null) {
-      const tier = epResult.verdict === 'CRITICAL' ? 'unauthenticated' : 'authenticated'
-      verdict = epResult.verdict
-      reason = `${reason} — reachable from ${tier} entry point`
-      evidence = [...evidence, ...epResult.evidence]
+      if (epResult.isTestOnlyPath) {
+        // Vulnerable call only reachable through test files → stay LOW
+        reason = `${reason} — call path only traverses test files`
+        evidence = [
+          ...evidence,
+          ...epResult.evidence,
+          {
+            type: 'import' as const,
+            description: 'all paths to the vulnerable symbol pass through test files',
+            caveat: 'test-file-only path — real-world reachability not confirmed',
+          },
+        ]
+      } else {
+        const tier = epResult.verdict === 'CRITICAL' ? 'unauthenticated' : 'authenticated'
+        verdict = epResult.verdict
+        reason = `${reason} — reachable from ${tier} entry point`
+        evidence = [...evidence, ...epResult.evidence]
+
+        if (epResult.hasDynamicPath) {
+          confidence = 'low'
+          evidence = [
+            ...evidence,
+            {
+              type: 'call-path' as const,
+              description:
+                'path includes a dynamic dispatch — symbol target cannot be statically confirmed',
+              caveat: 'dynamic call edge reduces confidence to low',
+            },
+          ]
+        }
+      }
     }
   }
 
@@ -360,6 +416,7 @@ export interface ScoreOptions {
   entryPoints?: EntryPoint[]
   fileGraph?: FileGraph
   callGraph?: CallGraph
+  depthLimit?: number
 }
 
 /**
@@ -393,6 +450,7 @@ export function scoreVerdicts(
       if (opts.entryPoints !== undefined) verdictOpts.entryPoints = opts.entryPoints
       if (opts.fileGraph !== undefined) verdictOpts.fileGraph = opts.fileGraph
       if (opts.callGraph !== undefined) verdictOpts.callGraph = opts.callGraph
+      if (opts.depthLimit !== undefined) verdictOpts.depthLimit = opts.depthLimit
       results.push(computeVerdict(pkg, cve, matchResult, verdictOpts))
     }
   }

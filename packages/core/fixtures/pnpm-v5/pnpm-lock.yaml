@@ -1,0 +1,42 @@
+lockfileVersion: 5.4
+
+importers:
+
+  .:
+    specifiers:
+      express: ^4.18.2
+      lodash: ^4.17.21
+      typescript: ^5.0.0
+    dependencies:
+      express: 4.18.2
+      lodash: 4.17.21
+    devDependencies:
+      typescript: 5.4.2
+
+packages:
+
+  /body-parser/1.20.1:
+    resolution: {integrity: sha512-jWi1ZwAyTFAQ==}
+    dev: false
+    dependencies:
+      bytes: 3.1.2
+
+  /bytes/3.1.2:
+    resolution: {integrity: sha512-AxbWar==}
+    dev: false
+
+  /express/4.18.2:
+    resolution: {integrity: sha512-KiADSmFP==}
+    engines: {node: '>= 0.10.0'}
+    dependencies:
+      body-parser: 1.20.1
+    dev: false
+
+  /lodash/4.17.21:
+    resolution: {integrity: sha512-v2kDE==}
+    dev: false
+
+  /typescript/5.4.2:
+    resolution: {integrity: sha512-KDT3==}
+    engines: {node: '>=14.17'}
+    dev: true

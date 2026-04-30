@@ -57,14 +57,24 @@ export const RootPackageJsonSchema = z.object({
 
 export type RootPackageJson = z.infer<typeof RootPackageJsonSchema>
 
-// ── pnpm-lock.yaml v6/v9 ─────────────────────────────────────────────────────
+// ── pnpm-lock.yaml v5/v6/v9 ──────────────────────────────────────────────────
+//
+// v5 (lockfileVersion 5.x): dep entries are plain strings (just the version).
+//   importers["."].specifiers  = { pkg: "^1.0" }   (separate field)
+//   importers["."].dependencies = { pkg: "1.2.3" }  (string values)
+//
+// v6/v9 (lockfileVersion 6.x / 9.x): dep entries are objects.
+//   importers["."].dependencies = { pkg: { specifier: "^1.0", version: "1.2.3" } }
 
-const PnpmDepEntrySchema = z.object({
-  specifier: z.string(),
-  version: z.string(),
-})
+const PnpmDepEntrySchema = z.union([
+  z.object({ specifier: z.string(), version: z.string() }),
+  z.string(),
+])
+
+export type PnpmDepEntry = z.infer<typeof PnpmDepEntrySchema>
 
 export const PnpmImporterSchema = z.object({
+  specifiers: strRecord().optional(), // v5 only
   dependencies: z.record(z.string(), PnpmDepEntrySchema).optional(),
   devDependencies: z.record(z.string(), PnpmDepEntrySchema).optional(),
   optionalDependencies: z.record(z.string(), PnpmDepEntrySchema).optional(),

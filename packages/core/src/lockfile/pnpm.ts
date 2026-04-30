@@ -1,13 +1,41 @@
 import { load as yamlLoad } from 'js-yaml'
 import { LockfileParseError } from '../errors.js'
 import type { ResolvedPackage } from '../types.js'
+import type { PnpmDepEntry } from './schemas.js'
 import { PnpmLockfileSchema } from './schemas.js'
 
-// Normalize pnpm package key: strip leading "/" if present.
-// v6: "/express@4.18.2" → "express@4.18.2"
-// v9: "express@4.18.2" → unchanged
+/** Extract the resolved version from a pnpm dep entry (v5 string or v6/v9 object). */
+function depVer(entry: PnpmDepEntry): string {
+  return typeof entry === 'string' ? entry : entry.version
+}
+
+/**
+ * Normalize a pnpm package key to "name@version" form.
+ *
+ * v5:   "/express/4.18.2"          → "express@4.18.2"
+ *        "/@scope/pkg/1.0.0"       → "@scope/pkg@1.0.0"
+ * v6:   "/express@4.18.2"          → "express@4.18.2"
+ *        "/@scope/pkg@1.0.0"       → "@scope/pkg@1.0.0"
+ * v9:   "express@4.18.2"           → "express@4.18.2"  (no change)
+ */
 function normKey(key: string): string {
-  return key.startsWith('/') ? key.slice(1) : key
+  const k = key.startsWith('/') ? key.slice(1) : key
+
+  if (k.startsWith('@')) {
+    // Scoped package: v6/v9 has "@" after the name ("@scope/name@ver");
+    // v5 has only the initial "@" ("@scope/name/ver").
+    const secondAt = k.indexOf('@', 1)
+    if (secondAt > 0) return k // already "name@version"
+    // v5: replace last "/" with "@"
+    const lastSlash = k.lastIndexOf('/')
+    return lastSlash > 0 ? k.slice(0, lastSlash) + '@' + k.slice(lastSlash + 1) : k
+  }
+
+  if (k.includes('@')) return k // v6/v9: "name@version"
+
+  // v5 non-scoped: "name/version"
+  const lastSlash = k.lastIndexOf('/')
+  return lastSlash > 0 ? k.slice(0, lastSlash) + '@' + k.slice(lastSlash + 1) : k
 }
 
 // Extract name from "name@version" or "@scope/name@version"
@@ -127,8 +155,8 @@ export function parsePnpmLock(content: string): ResolvedPackage[] {
   const prodDeps = rootImporter.dependencies ?? {}
   const devDeps = rootImporter.devDependencies ?? {}
 
-  const prodRootNvs = Object.entries(prodDeps).map(([name, { version }]) => `${name}@${version}`)
-  const devRootNvs = Object.entries(devDeps).map(([name, { version }]) => `${name}@${version}`)
+  const prodRootNvs = Object.entries(prodDeps).map(([name, e]) => `${name}@${depVer(e)}`)
+  const devRootNvs = Object.entries(devDeps).map(([name, e]) => `${name}@${depVer(e)}`)
   const prodRootNames = Object.keys(prodDeps)
   const devRootNames = Object.keys(devDeps)
 

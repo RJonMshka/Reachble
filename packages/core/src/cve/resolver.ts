@@ -217,6 +217,9 @@ async function resolveWithCache(
   }
 
   // ── 3. NVD CVSS for those OSV couldn't provide ─────────────────────────────
+  // Sentinel stored in cache when NVD has no data — prevents repeated lookups.
+  const NVD_ABSENT = '__absent__'
+
   if (cveIdsNeedingNvd.length > 0 && !opts.offline) {
     const nvdLimit = pLimit(opts.nvdApiKey ? 5 : 1)
     await Promise.all(
@@ -224,19 +227,29 @@ async function resolveWithCache(
         nvdLimit(async () => {
           const cacheKey = `${NVD_CACHE_PREFIX}${cveId}`
           const cached = cache.get(cacheKey)
-          let result: { score: number; severity: Severity } | undefined
 
-          if (cached !== null && typeof cached === 'object' && 'score' in cached) {
-            result = cached as { score: number; severity: Severity }
-          } else {
-            const nvd = await fetchNvdCvss(cveId, opts.nvdApiKey)
-            if (nvd) {
-              result = { score: nvd.score, severity: nvd.severity }
-              cache.set(cacheKey, result)
-            }
+          // Already determined absent — skip without a network call.
+          if (cached === NVD_ABSENT) return
+
+          if (typeof cached === 'object' && cached !== null && 'score' in cached) {
+            vulnsByCveId.set(cveId, cached as { score: number; severity: Severity })
+            return
           }
 
-          if (result) vulnsByCveId.set(cveId, result)
+          try {
+            const nvd = await fetchNvdCvss(cveId, opts.nvdApiKey)
+            if (nvd) {
+              const entry = { score: nvd.score, severity: nvd.severity }
+              cache.set(cacheKey, entry)
+              vulnsByCveId.set(cveId, entry)
+            } else {
+              // NVD has no record for this ID (common for GHSA-only advisories).
+              cache.set(cacheKey, NVD_ABSENT)
+            }
+          } catch {
+            // NVD unavailable (rate limit, network error) — skip gracefully.
+            // Do NOT cache so we retry on the next run when NVD is available.
+          }
         }),
       ),
     )
@@ -261,6 +274,13 @@ async function resolveWithCache(
     for (const [id, score] of fetched) {
       epssMap.set(id, score)
       cache.set(`${EPSS_CACHE_PREFIX}${id}`, score)
+    }
+    // Cache 0 for IDs not returned by EPSS (GHSA-only IDs, non-CVE advisories).
+    for (const id of uncachedEpssIds) {
+      if (!fetched.has(id)) {
+        cache.set(`${EPSS_CACHE_PREFIX}${id}`, 0)
+        epssMap.set(id, 0)
+      }
     }
   }
 

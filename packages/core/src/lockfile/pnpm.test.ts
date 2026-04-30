@@ -62,3 +62,37 @@ describe('parsePnpmLock — error cases', () => {
     expect(() => parsePnpmLock('not: yaml: at: all: really: bad')).toThrow(LockfileParseError)
   })
 })
+
+describe('parsePnpmLock — v5 (string dep entries)', () => {
+  const pkgs = parsePnpmLock(readFixture('pnpm-v5/pnpm-lock.yaml'))
+
+  it('parses without throwing', () => {
+    expect(pkgs.length).toBeGreaterThan(0)
+  })
+
+  it('returns sorted deterministic output', () => {
+    const names = pkgs.map((p) => `${p.name}@${p.version}`)
+    expect(names).toEqual([...names].sort())
+  })
+
+  it('includes express as prod dep at depth 1', () => {
+    const express = pkgs.find((p) => p.name === 'express')
+    expect(express).toBeDefined()
+    expect(express?.version).toBe('4.18.2')
+    expect(express?.depth).toBe(1)
+    expect(express?.devOnly).toBe(false)
+  })
+
+  it('marks typescript as devOnly', () => {
+    const ts = pkgs.find((p) => p.name === 'typescript')
+    expect(ts).toBeDefined()
+    expect(ts?.devOnly).toBe(true)
+  })
+
+  it('includes transitive dep body-parser at depth 2', () => {
+    const bp = pkgs.find((p) => p.name === 'body-parser')
+    expect(bp).toBeDefined()
+    expect(bp?.devOnly).toBe(false)
+    expect(bp?.depth).toBe(2)
+  })
+})

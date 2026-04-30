@@ -298,8 +298,11 @@ export function computeVerdict(
 
   // Entry point elevation: LOW → CRITICAL/HIGH when an entry point can reach the call/import site
   if (verdict === 'LOW' && opts.entryPoints !== undefined && opts.entryPoints.length > 0) {
+    // Only use the call graph when we have specific symbols to search for.
+    // If affectedSymbols is empty (package-level CVE), fall through to import-level elevation —
+    // the call graph saying "no call sites found" is meaningless when we don't know which symbol.
     const callSites =
-      opts.callGraph !== undefined
+      opts.callGraph !== undefined && cve.affectedSymbols.length > 0
         ? findCallSites(
             opts.callGraph,
             pkg.name,

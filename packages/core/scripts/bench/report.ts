@@ -18,7 +18,7 @@ function findingsTable(findings: TopFinding[]): string {
 
 function verdictPct(count: number, total: number): string {
   const pct = total > 0 ? Math.round((count / total) * 100) : 0
-  return `${count} (${pct}%)`
+  return `${pct}%`
 }
 
 // ── Per-repo section ──────────────────────────────────────────────────────────
@@ -104,6 +104,15 @@ function repoSection(r: BenchResult): string {
   lines.push(`| Verdict scoring | ${fmtMs(r.timings.verdictScoring)} |`)
   lines.push(`| **Total** | **${fmtMs(r.timings.total)}** |`)
 
+  if (r.fileCount > 0 && r.timings.total > 0) {
+    const msPerFile = (r.timings.total / r.fileCount).toFixed(1)
+    lines.push('')
+    lines.push(
+      `*Analysis throughput (cached CVE data): ${msPerFile}ms/file, ` +
+        `${r.fileCount} files in ${fmtMs(r.timings.total)}*`,
+    )
+  }
+
   return lines.join('\n')
 }
 
@@ -175,10 +184,49 @@ function analysisSection(ok: BenchResult[], callGraph: boolean): string {
       '`confidence: low` with a `caveat` so analysts can filter them separately.',
   )
   lines.push('')
+
+  lines.push('**Symbol coverage**')
+  lines.push('')
   lines.push(
     `Symbol coverage is ${symbolCovPct}%: ${totalCvesWithSymbols} of ${totalCves} CVEs ` +
       'carry specific function-level data from OSV / fix-commit diffs. ' +
-      'The remainder are assessed at package level (conservative LOW).',
+      'When coverage is low, all assessments are at package level (conservative LOW before entry-point elevation). ' +
+      'Symbol coverage improves with a GitHub token (higher rate limits on fix-commit diffs) ' +
+      'and when the OSV advisory includes `affected_functions` data.',
+  )
+  lines.push('')
+
+  lines.push('**CVSS / EPSS gaps**')
+  lines.push('')
+  lines.push(
+    'Many advisories from GitHub Security Advisory (GHSA-\\*) lack a CVE alias in OSV, ' +
+      'so NVD lookup returns no CVSS score and EPSS returns 0. ' +
+      'This results in `cvssScore: 0` for those findings, which reduces the usefulness of ' +
+      'CVSS-based filtering. Providing an `NVD_API_KEY` environment variable and a `GITHUB_TOKEN` ' +
+      'for fix-commit diffs would close both gaps.',
+  )
+  lines.push('')
+
+  lines.push('**No HIGH findings**')
+  lines.push('')
+  lines.push(
+    'All non-SAFE findings are CRITICAL or LOW — no HIGH. This is because every detected ' +
+      'entry point is classified as unauthenticated. In practice, many routes require auth ' +
+      'tokens that Reachble cannot see from static analysis alone. ' +
+      'Providing `.reachble.json` suppressions or annotating entry points as `authenticated` ' +
+      'would produce more HIGH findings at lower CRITICAL counts.',
+  )
+  lines.push('')
+
+  lines.push('**What improves precision**')
+  lines.push('')
+  lines.push(
+    '| Improvement | Impact |\n' +
+      '|-------------|--------|\n' +
+      '| `GITHUB_TOKEN` env var | Fix-commit diffs → symbol-level CVEs → call-graph precision |\n' +
+      '| `NVD_API_KEY` env var | CVSS scores for GHSA advisories |\n' +
+      '| `.reachble.json` auth annotations | Routes → HIGH instead of CRITICAL |\n' +
+      '| OSV `affected_functions` data | Symbol coverage without GitHub token |',
   )
 
   return lines.join('\n')

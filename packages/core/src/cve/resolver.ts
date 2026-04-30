@@ -1,10 +1,11 @@
 import pLimit from 'p-limit'
 
 import { CveResolverError } from '../errors.js'
-import type { CveRecord } from '../types.js'
+import type { AffectedSymbol, CveRecord } from '../types.js'
 import type { ResolvedPackage } from '../types.js'
 import { CveCache } from './cache.js'
 import { fetchEpssScores } from './epss.js'
+import { resolveFixDiffSymbols } from './fix-commit.js'
 import { fetchNvdCvss } from './nvd.js'
 import { queryOsvBatch } from './osv.js'
 import type { OsvVulnerability, OsvRange } from './schemas.js'
@@ -15,6 +16,8 @@ export interface ResolverOptions {
   offline?: boolean
   cacheDir?: string
   nvdApiKey?: string
+  /** GitHub personal access token for higher fix-commit diff rate limits. */
+  githubToken?: string
   overrides?: SymbolOverride[]
 }
 
@@ -78,6 +81,7 @@ function buildCveRecord(
   severity: Severity,
   epssScore: number,
   opts: ResolverOptions,
+  fixDiffSymbols?: AffectedSymbol[],
 ): CveRecord {
   const cveId = vuln.aliases?.find((a) => a.startsWith('CVE-')) ?? vuln.id
   const aliases = [vuln.id, ...(vuln.aliases?.filter((a) => a !== cveId) ?? [])].filter(
@@ -88,10 +92,10 @@ function buildCveRecord(
   const fixedIn = extractFixedIn(npmAffected?.ranges)
   const affectedVersionRange = buildVersionRange(npmAffected?.ranges)
 
-  const symbols = extractSymbols(
-    vuln,
-    opts.overrides !== undefined ? { overrides: opts.overrides } : {},
-  )
+  const symbols = extractSymbols(vuln, {
+    ...(opts.overrides !== undefined ? { overrides: opts.overrides } : {}),
+    ...(fixDiffSymbols !== undefined ? { fixDiffSymbols } : {}),
+  })
 
   const record: CveRecord = {
     id: cveId,
@@ -138,6 +142,7 @@ function extractOsvCvssScore(
 const OSV_CACHE_PREFIX = 'osv:npm:'
 const NVD_CACHE_PREFIX = 'nvd:'
 const EPSS_CACHE_PREFIX = 'epss:'
+const FIX_DIFF_CACHE_PREFIX = 'fix-diff-symbols:'
 
 // ── Main resolver ────────────────────────────────────────────────────────────
 
@@ -259,7 +264,49 @@ async function resolveWithCache(
     }
   }
 
-  // ── 5. Build CveRecord[] per package ───────────────────────────────────────
+  // ── 5. Fix-commit diff symbols (for vulns with no OSV affected_functions) ───
+  const fixDiffMap = new Map<string, AffectedSymbol[]>()
+
+  if (!opts.offline) {
+    const needsDiff = [...allVulns.entries()].filter(([, vuln]) =>
+      vuln.affected.every(
+        (a) =>
+          a.package.ecosystem !== 'npm' ||
+          (a.ecosystem_specific?.affected_functions?.length ?? 0) === 0,
+      ),
+    )
+
+    const diffLimit = pLimit(opts.githubToken ? 5 : 2)
+    await Promise.all(
+      needsDiff.map(([cveId, vuln]) =>
+        diffLimit(async () => {
+          const cacheKey = `${FIX_DIFF_CACHE_PREFIX}${cveId}`
+          const cached = cache.get(cacheKey)
+          if (Array.isArray(cached)) {
+            fixDiffMap.set(cveId, cached as AffectedSymbol[])
+            return
+          }
+
+          const commitUrls = (vuln.references ?? [])
+            .filter((r) => r.type === 'FIX')
+            .map((r) => r.url)
+
+          if (commitUrls.length === 0) {
+            cache.set(cacheKey, [])
+            return
+          }
+
+          const symbols = await resolveFixDiffSymbols(commitUrls, {
+            ...(opts.githubToken !== undefined ? { githubToken: opts.githubToken } : {}),
+          })
+          cache.set(cacheKey, symbols)
+          if (symbols.length > 0) fixDiffMap.set(cveId, symbols)
+        }),
+      ),
+    )
+  }
+
+  // ── 6. Build CveRecord[] per package ───────────────────────────────────────
   const result = new Map<string, CveRecord[]>()
 
   for (const pkg of packages) {
@@ -273,8 +320,9 @@ async function resolveWithCache(
       const cvssScore = cvssInfo?.score ?? 0
       const severity = cvssInfo?.severity ?? 'LOW'
       const epssScore = epssMap.get(cveId) ?? 0
+      const fixDiffSymbols = fixDiffMap.get(cveId)
 
-      records.push(buildCveRecord(vuln, cvssScore, severity, epssScore, opts))
+      records.push(buildCveRecord(vuln, cvssScore, severity, epssScore, opts, fixDiffSymbols))
     }
 
     result.set(pkgKey, records)

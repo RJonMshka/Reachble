@@ -93,6 +93,8 @@ export interface SymbolOverride {
 export interface ExtractOptions {
   nvdDescription?: string
   overrides?: SymbolOverride[]
+  /** Pre-fetched symbols from fix-commit diffs (slotted after overrides). */
+  fixDiffSymbols?: AffectedSymbol[]
 }
 
 export function extractSymbols(
@@ -114,19 +116,24 @@ export function extractSymbols(
     }))
   }
 
-  // 3. NVD description regex
+  // 3. Fix-commit diff symbols (pre-fetched by the async resolver)
+  if (opts.fixDiffSymbols && opts.fixDiffSymbols.length > 0) {
+    return dedupe(opts.fixDiffSymbols)
+  }
+
+  // 4. NVD description regex
   if (opts.nvdDescription) {
     const nvdSymbols = fromDescription(opts.nvdDescription, 'nvd-desc')
     if (nvdSymbols.length > 0) return nvdSymbols
   }
 
-  // 4. OSV/GHSA details field
+  // 5. OSV/GHSA details field
   const details = vuln.details ?? vuln.summary ?? ''
   if (details) {
     const ghsaSymbols = fromDescription(details, 'ghsa-desc')
     if (ghsaSymbols.length > 0) return ghsaSymbols
   }
 
-  // 5. Package-level fallback — no specific symbols known
+  // 6. Package-level fallback — no specific symbols known
   return []
 }

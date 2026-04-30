@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { assert, describe, expect, it } from 'vitest'
 import type { CallEdge, FileGraph } from '../types.js'
 import type { EntryPoint } from '../types.js'
 import { bfsPath, findCallPath, isTestFile } from './reach.js'
@@ -144,7 +144,7 @@ describe('findCallPath', () => {
     const fg: FileGraph = new Map()
     const site = makeCallSite({ callerFile: '/ep.ts' })
     const result = findCallPath(makeEp('/ep.ts'), [site], fg)
-    expect(result).not.toBeNull()
+    assert(result !== null)
     expect(result.filePath).toEqual(['/ep.ts'])
     expect(result.callSite).toBe(site)
   })
@@ -153,6 +153,7 @@ describe('findCallPath', () => {
     const fg: FileGraph = new Map([['/ep.ts', ['/routes.ts']]])
     const site = makeCallSite({ callerFile: '/routes.ts' })
     const result = findCallPath(makeEp('/ep.ts'), [site], fg)
+    assert(result !== null)
     expect(result.filePath).toEqual(['/ep.ts', '/routes.ts'])
     expect(result.callSite).toBe(site)
   })
@@ -161,6 +162,7 @@ describe('findCallPath', () => {
     const fg: FileGraph = new Map([['/ep.ts', ['/routes.ts']]])
     const site = makeCallSite({ callerFile: '/routes.ts', dynamic: false })
     const result = findCallPath(makeEp('/ep.ts'), [site], fg)
+    assert(result !== null)
     expect(result.hasDynamicEdge).toBe(false)
   })
 
@@ -168,6 +170,7 @@ describe('findCallPath', () => {
     const fg: FileGraph = new Map([['/ep.ts', ['/routes.ts']]])
     const site = makeCallSite({ callerFile: '/routes.ts', dynamic: true })
     const result = findCallPath(makeEp('/ep.ts'), [site], fg)
+    assert(result !== null)
     expect(result.hasDynamicEdge).toBe(true)
   })
 
@@ -186,6 +189,7 @@ describe('findCallPath', () => {
     const siteA = makeCallSite({ callerFile: '/other.ts', calleeSymbol: 'merge' })
     const siteB = makeCallSite({ callerFile: '/routes.ts', calleeSymbol: 'template' })
     const result = findCallPath(makeEp('/ep.ts'), [siteA, siteB], fg)
+    assert(result !== null)
     expect(result.callSite).toBe(siteB)
   })
 })

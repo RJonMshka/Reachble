@@ -32,7 +32,8 @@
     "test": "vitest run",
     "test:watch": "vitest --watch",
     "lint": "eslint src --max-warnings 0 && prettier --check src",
-    "lint:fix": "eslint src --fix && prettier --write src"
+    "lint:fix": "eslint src --fix && prettier --write src",
+    "benchmark": "tsx --tsconfig tsconfig.scripts.json scripts/benchmark.ts"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
@@ -42,6 +43,7 @@
     "@vitest/coverage-v8": "^2.1.0",
     "eslint": "^9.10.0",
     "tsup": "^8.3.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.8.0",
     "vitest": "^2.1.0"

@@ -1,8 +1,12 @@
 #!/usr/bin/env node
+import { createRequire } from 'node:module'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { cwd } from 'node:process'
 import { fileURLToPath } from 'node:url'
+
+const _require = createRequire(import.meta.url)
+const PKG_VERSION = (_require('../package.json') as { version: string }).version
 import chalk from 'chalk'
 import { Command } from 'commander'
 import ora from 'ora'
@@ -198,6 +202,7 @@ export async function runScan(opts: ScanOptions): Promise<void> {
   // ── Output ────────────────────────────────────────────────────────────────
   const vexOpts = {
     projectName: meta.name,
+    toolVersion: PKG_VERSION,
     ...(meta.version !== undefined ? { projectVersion: meta.version } : {}),
   }
 
@@ -242,7 +247,7 @@ const program = new Command()
 program
   .name('reachble')
   .description('VEX generator for npm/JS/TS projects backed by reachability analysis')
-  .version('0.1.0')
+  .version(PKG_VERSION)
 
 program
   .command('scan')

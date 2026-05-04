@@ -211,7 +211,7 @@ describe('buildOpenVex', () => {
 
   it('@id is a deterministic URL containing content hash', () => {
     const doc = buildOpenVex(ALL_RESULTS, FIXED_OPTS)
-    expect(doc['@id']).toMatch(/^https:\/\/reachble\.dev\/vex\/[0-9a-f]{64}$/)
+    expect(doc['@id']).toMatch(/^https:\/\/github\.com\/RJonMshka\/reachble\/vex\/[0-9a-f]{64}$/)
   })
 
   it('maps SAFE (absent) → not_affected + vulnerable_code_not_present', () => {
@@ -277,10 +277,9 @@ describe('buildOpenVex', () => {
 // ── JSON v1 ───────────────────────────────────────────────────────────────────
 
 describe('buildJsonV1', () => {
-  it('sets version and $schema', () => {
+  it('sets version to v1', () => {
     const doc = buildJsonV1(ALL_RESULTS, FIXED_OPTS)
     expect(doc.version).toBe('v1')
-    expect(doc.$schema).toContain('reachble.dev/schema/v1')
   })
 
   it('summary counts match results', () => {

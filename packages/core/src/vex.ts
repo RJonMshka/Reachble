@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto'
 import type { VerdictResult } from './types.js'
 
 const TOOL_NAME = 'reachble'
-const TOOL_VERSION = '0.1.0'
 
 // ─── Options ─────────────────────────────────────────────────────────────────
 
@@ -25,7 +24,7 @@ function resolvedTs(opts: VexOptions): string {
 }
 
 function resolvedVersion(opts: VexOptions): string {
-  return opts.toolVersion ?? TOOL_VERSION
+  return opts.toolVersion ?? 'unknown'
 }
 
 /**
@@ -263,7 +262,7 @@ export function buildOpenVex(results: VerdictResult[], opts: VexOptions): OpenVe
 
   return {
     '@context': 'https://openvex.dev/ns/v0.2.0',
-    '@id': `https://reachble.dev/vex/${hash}`,
+    '@id': `https://github.com/RJonMshka/reachble/vex/${hash}`,
     author: 'Reachble',
     timestamp,
     version: 1,
@@ -282,7 +281,6 @@ export interface ReachbleJsonV1Summary {
 }
 
 export interface ReachbleJsonV1 {
-  $schema: string
   version: 'v1'
   generatedAt: string
   tool: { name: string; version: string }
@@ -311,7 +309,6 @@ export function buildJsonV1(results: VerdictResult[], opts: VexOptions): Reachbl
   if (opts.projectVersion !== undefined) project.version = opts.projectVersion
 
   return {
-    $schema: 'https://reachble.dev/schema/v1/results.json',
     version: 'v1',
     generatedAt: resolvedTs(opts),
     tool: { name: TOOL_NAME, version: resolvedVersion(opts) },

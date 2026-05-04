@@ -22,7 +22,7 @@ const compiled = template('Hello, <%= user %>!')
 import express from 'express'
 import { renderPage } from './routes/render.js'
 
-app.get('/render', renderPage)             // ← unauthenticated HTTP route (V1 will trace to CRITICAL)
+app.get('/render', renderPage)             // ← unauthenticated HTTP route
 ```
 
 ---
@@ -60,7 +60,7 @@ VEX written to fixtures/demo-express/reachble-vex.cdx.json
       "id": "CVE-2021-23337",
       "analysis": {
         "state": "exploitable",
-        "detail": "Vulnerable symbol(s) imported from lodash at src/routes/render.ts:8 — import-level analysis only; V1 call graph will refine reachability"
+        "detail": "Vulnerable symbol(s) imported from lodash at src/routes/render.ts:8"
       }
     }
   ]

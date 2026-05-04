@@ -2,6 +2,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { cwd } from 'node:process'
+import { fileURLToPath } from 'node:url'
 import chalk from 'chalk'
 import { Command } from 'commander'
 import ora from 'ora'
@@ -34,7 +35,7 @@ function verdictColor(verdict: VerdictResult['verdict']): string {
   }
 }
 
-function readProjectMeta(dir: string): { name: string; version?: string } {
+export function readProjectMeta(dir: string): { name: string; version?: string } {
   const pkgPath = join(dir, 'package.json')
   if (!existsSync(pkgPath)) return { name: dir }
   try {
@@ -47,7 +48,7 @@ function readProjectMeta(dir: string): { name: string; version?: string } {
   }
 }
 
-function shouldFail(results: VerdictResult[], level: FailOnLevel): boolean {
+export function shouldFail(results: VerdictResult[], level: FailOnLevel): boolean {
   for (const r of results) {
     if (level === 'critical' && r.verdict === 'CRITICAL') return true
     if (level === 'high' && (r.verdict === 'CRITICAL' || r.verdict === 'HIGH')) return true
@@ -120,7 +121,7 @@ function printSummary(
 
 // ── Scan command ───────────────────────────────────────────────────────────────
 
-interface ScanOptions {
+export interface ScanOptions {
   path: string
   format: 'vex' | 'json' | 'sarif' | 'table'
   failOn: FailOnLevel | undefined
@@ -129,7 +130,7 @@ interface ScanOptions {
   ignoreDev: boolean
 }
 
-async function runScan(opts: ScanOptions): Promise<void> {
+export async function runScan(opts: ScanOptions): Promise<void> {
   const projectDir = resolve(opts.path)
 
   // ── Config ────────────────────────────────────────────────────────────────
@@ -294,4 +295,8 @@ program
     },
   )
 
-program.parse()
+// Guard: only parse argv when this file is run directly (not imported in tests)
+const thisFile = fileURLToPath(import.meta.url)
+if (process.argv[1] !== undefined && resolve(process.argv[1]) === resolve(thisFile)) {
+  program.parse()
+}

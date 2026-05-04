@@ -36,17 +36,19 @@ LOW      — reachable in code, no external input path found
 SAFE     — vulnerable symbol never reached  → VEX `not_affected`
 ```
 
-### Demo (planned, milestone M10)
+### Demo
 
-A small Express app with two known lodash CVEs side-by-side: one reachable
-(verdict `CRITICAL`), one unreachable (verdict `SAFE` → VEX `not_affected`
-with justification `vulnerable_code_not_in_execute_path`). Output committed
-to `docs/demo-output.md` so you can see exactly what Reachble emits.
+A minimal Express app with two lodash CVEs side-by-side: one reachable
+(`template` is imported → verdict `LOW`), one not (`trim` never imported →
+verdict `SAFE` → VEX `not_affected`). See [`docs/demo-output.md`](docs/demo-output.md)
+for the full scan output.
 
 ### Status
 
-Pre-MVP. Building. See [`docs/PLAN.md`](docs/PLAN.md) for milestones,
-[`docs/GUIDE.md`](docs/GUIDE.md) for the research notes and ADRs, and
+MVP — lockfile parsing, import-graph reachability, OSV/NVD/EPSS CVE resolution,
+and CycloneDX VEX + OpenVEX output are all working. 357 tests, lint clean.
+
+See [`docs/GUIDE.md`](docs/GUIDE.md) for research notes and ADRs, and
 [`CLAUDE.md`](CLAUDE.md) for the project's hard rules.
 
 MIT.

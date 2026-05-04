@@ -17,7 +17,11 @@ export interface CommitRef {
 export function parseGithubCommitUrl(url: string): CommitRef | null {
   const m = /github\.com\/([^/]+)\/([^/]+)\/(?:pull\/\d+\/)?commits?\/([0-9a-f]{7,40})\b/i.exec(url)
   if (!m) return null
-  return { owner: m[1], repo: m[2], sha: m[3] }
+  const owner = m[1]
+  const repo = m[2]
+  const sha = m[3]
+  if (!owner || !repo || !sha) return null
+  return { owner, repo, sha }
 }
 
 // ── Diff parsing ──────────────────────────────────────────────────────────────

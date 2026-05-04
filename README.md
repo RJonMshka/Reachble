@@ -9,7 +9,15 @@ statement explaining why each unaffected CVE is unaffected. Today that's a
 spreadsheet. Reachble produces it from your code.
 
 ```bash
+# zero-install (recommended)
 npx reachble scan
+
+# global install
+npm install -g reachble
+reachble scan
+
+# CI — fail only on real threats
+reachble scan --format vex --fail-on high
 ```
 
 Outputs **CycloneDX VEX + OpenVEX** with machine-checkable evidence:

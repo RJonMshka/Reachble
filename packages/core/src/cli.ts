@@ -295,7 +295,10 @@ program
     },
   )
 
-// Guard: only parse argv when this file is run directly (not imported in tests)
+export { program }
+
+// Guard: only parse argv when invoked directly as `node dist/cli.cjs` (used in subprocess tests).
+// When invoked via the bin shim (npx / global install), bin/reachble.js calls program.parse() instead.
 const thisFile = fileURLToPath(import.meta.url)
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === resolve(thisFile)) {
   program.parse()

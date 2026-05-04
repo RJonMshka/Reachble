@@ -1,6 +1,6 @@
 {
   "name": "reachble",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "VEX generator for npm/JS/TS projects backed by reachability analysis",
   "type": "module",
   "exports": {

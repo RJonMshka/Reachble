@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reachble — Auto-generated VEX for npm projects</title>
+  <meta name="description" content="Stop triaging false-positive CVEs by hand. Reachble auto-generates VEX documents for npm projects using import-graph reachability analysis." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --green: #3fb950;
+      --red: #f85149;
+      --yellow: #d29922;
+      --orange: #e3b341;
+      --purple: #bc8cff;
+      --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+
+    /* NAV */
+    nav {
+      border-bottom: 1px solid var(--border);
+      padding: 16px 0;
+    }
+    nav .wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo { font-weight: 700; font-size: 18px; color: var(--text); letter-spacing: -0.5px; }
+    .logo span { color: var(--accent); }
+    nav a { color: var(--muted); font-size: 14px; margin-left: 24px; }
+    nav a:hover { color: var(--text); text-decoration: none; }
+
+    /* HERO */
+    .hero { padding: 72px 0 56px; }
+    .badge {
+      display: inline-block;
+      background: #1f2937;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+    .badge strong { color: var(--green); }
+    h1 {
+      font-size: clamp(28px, 5vw, 44px);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -1px;
+      margin-bottom: 20px;
+    }
+    h1 em { font-style: normal; color: var(--accent); }
+    .sub {
+      font-size: 18px;
+      color: var(--muted);
+      max-width: 560px;
+      margin-bottom: 36px;
+    }
+    .cta-group { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: .85; text-decoration: none; }
+    .btn-primary { background: var(--accent); color: #0d1117; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+
+    /* TERMINAL */
+    .terminal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin: 48px 0;
+      overflow: hidden;
+    }
+    .terminal-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: #1c2128;
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #febc2e; }
+    .dot-g { background: #28c840; }
+    .terminal pre {
+      padding: 20px 24px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.7;
+      overflow-x: auto;
+    }
+    .t-prompt { color: var(--muted); }
+    .t-cmd { color: var(--text); }
+    .t-sep { color: var(--border); }
+    .t-safe { color: var(--green); font-weight: 700; }
+    .t-low { color: var(--yellow); font-weight: 700; }
+    .t-high { color: var(--orange); font-weight: 700; }
+    .t-crit { color: var(--red); font-weight: 700; }
+    .t-muted { color: var(--muted); }
+    .t-info { color: var(--accent); }
+
+    /* PROBLEM */
+    .section { padding: 48px 0; border-top: 1px solid var(--border); }
+    h2 { font-size: 24px; font-weight: 700; margin-bottom: 16px; letter-spacing: -0.5px; }
+    p { color: var(--muted); margin-bottom: 16px; }
+    p:last-child { margin-bottom: 0; }
+    p strong { color: var(--text); }
+
+    /* VERDICTS */
+    .verdicts { display: grid; gap: 12px; margin-top: 24px; }
+    .verdict-row {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+    }
+    .verdict-tag {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 4px;
+      white-space: nowrap;
+      min-width: 80px;
+      text-align: center;
+    }
+    .tag-crit { background: rgba(248,81,73,.15); color: var(--red); }
+    .tag-high { background: rgba(227,179,65,.15); color: var(--orange); }
+    .tag-low  { background: rgba(210,153,34,.15); color: var(--yellow); }
+    .tag-safe { background: rgba(63,185,80,.15); color: var(--green); }
+    .verdict-desc { font-size: 14px; color: var(--muted); }
+    .verdict-desc strong { color: var(--text); }
+
+    /* TABLE */
+    table { width: 100%; border-collapse: collapse; margin-top: 24px; font-size: 14px; }
+    th { text-align: left; color: var(--muted); font-weight: 600; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--muted); }
+    td:first-child { color: var(--text); font-weight: 500; }
+    .check { color: var(--green); }
+    .partial { color: var(--yellow); }
+    .highlight td { background: rgba(88,166,255,.05); }
+    .highlight td:first-child { color: var(--accent); }
+
+    /* HOW IT WORKS */
+    .steps { display: grid; gap: 16px; margin-top: 24px; }
+    .step {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-body { font-size: 14px; color: var(--muted); }
+    .step-body strong { color: var(--text); display: block; margin-bottom: 4px; }
+
+    /* INSTALL */
+    .install-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-top: 24px;
+    }
+    .install-box code {
+      font-family: var(--mono);
+      font-size: 15px;
+      color: var(--green);
+    }
+    .install-box .comment { color: var(--muted); font-size: 13px; margin-top: 12px; display: block; font-family: var(--mono); }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0;
+      margin-top: 64px;
+    }
+    footer .wrap { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    footer p { font-size: 13px; color: var(--muted); margin: 0; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <span class="logo">Reach<span>ble</span></span>
+    <div>
+      <a href="https://github.com/RJonMshka/reachble">GitHub</a>
+      <a href="https://github.com/RJonMshka/reachble/blob/main/docs/GUIDE.md">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="badge"><strong>MVP</strong> &nbsp;·&nbsp; lockfile + import graph + VEX out</div>
+    <h1>Your scanner flags everything.<br><em>Most of it can't hurt you.</em></h1>
+    <p class="sub">
+      Reachble auto-generates VEX for npm projects using import-graph reachability —
+      so you know which CVEs are actually exploitable in your code, with machine-checkable evidence.
+    </p>
+    <div class="cta-group">
+      <a class="btn btn-primary" href="https://github.com/RJonMshka/reachble">View on GitHub</a>
+      <a class="btn btn-ghost" href="https://github.com/RJonMshka/reachble#demo">See demo output</a>
+    </div>
+  </section>
+
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="dot dot-r"></div>
+      <div class="dot dot-y"></div>
+      <div class="dot dot-g"></div>
+    </div>
+    <pre><span class="t-prompt">$ </span><span class="t-cmd">npx reachble scan</span>
+
+<span class="t-muted">Package   Version   CVE              Verdict   CVSS   Reason</span>
+<span class="t-sep">──────────────────────────────────────────────────────────────────────────</span>
+<span class="t-muted">lodash    4.17.18   CVE-2020-28500   </span><span class="t-safe">SAFE</span><span class="t-muted">      5.0    Vulnerable symbol(s) not imported</span>
+<span class="t-muted">lodash    4.17.18   CVE-2021-23337   </span><span class="t-low">LOW</span><span class="t-muted">       7.5    Vulnerable symbol(s) imported at src/routes/render.ts:8</span>
+
+<span class="t-muted">2 CVEs · 0 CRITICAL · 0 HIGH · 1 LOW · </span><span class="t-safe">1 SAFE</span>
+<span class="t-info">VEX written to reachble-vex.cdx.json</span></pre>
+  </div>
+
+  <section class="section">
+    <h2>The problem with "in the tree"</h2>
+    <p>
+      Research shows <strong>60–80% of CVEs flagged by dependency scanners</strong> sit in code
+      paths that are never called. The vulnerable function lives in your
+      <code>node_modules</code> — but your application never imports it, never invokes it,
+      never reaches it.
+    </p>
+    <p>
+      With SBOM mandates now in effect (US EO&nbsp;14028, EU CRA), you need a
+      <strong>VEX document</strong> — a machine-readable justification for every CVE you're
+      closing as not exploitable. Right now that's a manual spreadsheet. Reachble
+      generates it automatically from your code.
+    </p>
+  </section>
+
+  <section class="section">
+    <h2>Verdict tiers</h2>
+    <p>Not a severity number. An exploitability verdict grounded in your actual code.</p>
+    <div class="verdicts">
+      <div class="verdict-row">
+        <span class="verdict-tag tag-crit">CRITICAL</span>
+        <span class="verdict-desc"><strong>Reachable from unauthenticated external input</strong> — HTTP, CLI, file, env variable</span>
+      </div>
+      <div class="verdict-row">
+        <span class="verdict-tag tag-high">HIGH</span>
+        <span class="verdict-desc"><strong>Reachable from authenticated route</strong> or internal service call</span>
+      </div>
+      <div class="verdict-row">
+        <span class="verdict-tag tag-low">LOW</span>
+        <span class="verdict-desc"><strong>Reachable in code</strong>, but no external input path found</span>
+      </div>
+      <div class="verdict-row">
+        <span class="verdict-tag tag-safe">SAFE</span>
+        <span class="verdict-desc"><strong>Vulnerable symbol never reached</strong> → VEX <code>not_affected</code>, justification included</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Lockfile parsing</strong>
+          Reads your <code>package-lock.json</code>, <code>yarn.lock</code>, or <code>pnpm-lock.yaml</code>
+          to build a complete dependency inventory — including depth, devOnly flag, and transitives.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>CVE resolution</strong>
+          Queries OSV.dev, NVD, and GHSA for each package version. Extracts
+          affected symbols (specific functions/classes) from <code>affected_functions</code> fields,
+          fix-commit diffs, and description parsing.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Import-graph reachability</strong>
+          Uses <code>@typescript-eslint/parser</code> to build a static import graph
+          across your project — no tsconfig required. Maps whether the vulnerable symbol
+          is imported anywhere in your reachable code.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>VEX output</strong>
+          Emits CycloneDX VEX + OpenVEX with machine-checkable evidence for every
+          verdict. <code>SAFE</code> verdicts carry a <code>not_affected</code> justification
+          you can ship with your SBOM.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Comparison</h2>
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Traditional SCA</th>
+          <th>OSV-Scanner</th>
+          <th>Endor Labs</th>
+          <th>Reachble</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>CVE detection</td>
+          <td class="check">✓</td>
+          <td class="check">✓</td>
+          <td class="check">✓</td>
+          <td class="check">✓</td>
+        </tr>
+        <tr>
+          <td>Function-level reachability</td>
+          <td></td>
+          <td></td>
+          <td class="check">✓</td>
+          <td class="check">✓</td>
+        </tr>
+        <tr>
+          <td>Attack-surface scoring</td>
+          <td></td>
+          <td></td>
+          <td class="check">✓</td>
+          <td class="check">✓</td>
+        </tr>
+        <tr>
+          <td>Auto-generates VEX</td>
+          <td></td>
+          <td></td>
+          <td class="partial">partial</td>
+          <td class="check">✓</td>
+        </tr>
+        <tr>
+          <td>Open source</td>
+          <td class="partial">varies</td>
+          <td class="check">✓</td>
+          <td></td>
+          <td class="check">✓</td>
+        </tr>
+        <tr class="highlight">
+          <td>JS/TS specialization</td>
+          <td></td>
+          <td class="partial">partial</td>
+          <td class="partial">partial</td>
+          <td class="check">✓</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="section">
+    <h2>Install</h2>
+    <div class="install-box">
+      <code>npx reachble scan</code>
+      <span class="comment"># or install globally</span>
+      <code>npm install -g reachble</code>
+      <span class="comment"># CI — fail only on real threats</span>
+      <code>reachble scan --format vex --fail-on high</code>
+    </div>
+    <p style="margin-top: 20px;">
+      MIT license. No telemetry. No tracking. Works on npm, yarn, and pnpm lockfiles.
+    </p>
+    <div class="cta-group" style="margin-top: 20px;">
+      <a class="btn btn-primary" href="https://github.com/RJonMshka/reachble">GitHub →</a>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>Reachble — MIT license</p>
+    <p>Built by <a href="https://github.com/RJonMshka">Rajat Kumar</a></p>
+  </div>
+</footer>
+
+</body>
+</html>

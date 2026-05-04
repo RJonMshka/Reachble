@@ -1,5 +1,5 @@
 {
-  "name": "@reachble/core",
+  "name": "reachble",
   "version": "0.1.0",
   "description": "VEX generator for npm/JS/TS projects backed by reachability analysis",
   "type": "module",
@@ -22,7 +22,8 @@
     "reachble": "./dist/cli.cjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/**/*.map"
   ],
   "engines": {
     "node": ">=20.0.0"

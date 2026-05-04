@@ -68,10 +68,11 @@ lodash    4.17.18   CVE-2021-23337   LOW       7.5    Vulnerable symbol(s) impor
 VEX written to reachble-vex.cdx.json
 ```
 
-## Status
+## What it supports
 
-MVP — lockfile parsing (npm/yarn/pnpm), import-graph reachability, OSV + NVD +
-GHSA + EPSS CVE resolution, and CycloneDX VEX + OpenVEX output are all working.
-357 tests, lint clean.
+- **Lockfiles:** npm, yarn, pnpm
+- **CVE data:** OSV.dev, NVD, GHSA, EPSS scoring
+- **Output formats:** CycloneDX VEX, OpenVEX, JSON, table
+- **CI integration:** `--fail-on high` exits 1 when real threats are found
 
 MIT. No telemetry. No tracking.

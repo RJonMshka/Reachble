@@ -1,6 +1,6 @@
 {
   "name": "reachble",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "VEX generator for npm/JS/TS projects backed by reachability analysis",
   "type": "module",
   "exports": {
@@ -19,10 +19,11 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "reachble": "./dist/cli.cjs"
+    "reachble": "bin/reachble.js"
   },
   "files": [
     "dist",
+    "bin",
     "!dist/**/*.map"
   ],
   "engines": {

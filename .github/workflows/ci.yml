@@ -10,8 +10,11 @@ permissions:
 
 jobs:
   ci:
-    name: Lint · Test · Build
+    name: Lint · Test · Build (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['20', '22']
     steps:
       - uses: actions/checkout@v4
 
@@ -21,12 +24,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm lint
+        if: matrix.node-version == '20'
 
       - run: pnpm test -- --coverage
 

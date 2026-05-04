@@ -31,7 +31,7 @@ When you need a fact, look here first — don't re-derive:
 | Symbol extraction strategy | GUIDE.md §4 + §11 |
 | Entry-point detection patterns | GUIDE.md §5 |
 | Why a thing is the way it is | GUIDE.md §8 (ADRs) |
-| What's done / not done | PLAN.md milestone checkboxes |
+| What's done / not done | Milestones table in CLAUDE.md below |
 
 ## Repo layout
 

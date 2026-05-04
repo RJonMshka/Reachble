@@ -51,4 +51,5 @@ and CycloneDX VEX + OpenVEX output are all working. 357 tests, lint clean.
 See [`docs/GUIDE.md`](docs/GUIDE.md) for research notes and ADRs, and
 [`CLAUDE.md`](CLAUDE.md) for the project's hard rules.
 
-MIT.
+MIT. Contributions welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Security issues: see [`SECURITY.md`](SECURITY.md).
